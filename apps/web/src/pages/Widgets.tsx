@@ -667,6 +667,288 @@ export function Widgets() {
         </p>
         <div className="mt-4" ref={shadowHostRef} data-testid="shadow-host" />
       </section>
+
+      {/* Section 7: Menubars & Nested Submenus */}
+      <section className="rounded-lg border border-border bg-surface p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">7. Accessible Menubar & Nested Submenus</h2>
+            <p className="mt-1 text-xs text-muted">
+              Traverse menubars and nested popup menus using <span className="font-mono text-accent">getByRole('menuitem')</span> and keyboard arrow keys.
+            </p>
+          </div>
+          <Badge tone="neutral">role="menubar"</Badge>
+        </div>
+
+        <nav aria-label="Editor Menu" className="rounded-md border border-border bg-surface-muted p-1">
+          <div role="menubar" className="flex items-center space-x-1 text-xs font-medium">
+            {/* File Menu */}
+            <div className="relative group">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="true"
+                aria-expanded="false"
+                data-testid="menu-file"
+                className="px-3 py-1.5 rounded hover:bg-surface hover:text-text cursor-pointer"
+              >
+                File
+              </button>
+              {/* Dropdown menu */}
+              <div
+                role="menu"
+                aria-label="File Options"
+                className="hidden group-hover:block group-focus-within:block absolute z-20 top-full left-0 mt-1 w-44 rounded-md border border-border bg-surface p-1 shadow-lg"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="menuitem-new"
+                  onClick={() => setToastMessage("New file created")}
+                  className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-surface-muted"
+                >
+                  New Document
+                </button>
+                <div className="relative group/sub">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-haspopup="true"
+                    data-testid="menuitem-recent"
+                    className="w-full flex items-center justify-between px-3 py-1.5 rounded text-xs hover:bg-surface-muted"
+                  >
+                    <span>Open Recent</span>
+                    <span>&rsaquo;</span>
+                  </button>
+                  {/* Nested Submenu */}
+                  <div
+                    role="menu"
+                    aria-label="Recent Files"
+                    className="hidden group-hover/sub:block absolute top-0 left-full ml-1 w-40 rounded-md border border-border bg-surface p-1 shadow-lg"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      data-testid="menuitem-project-alpha"
+                      onClick={() => setToastMessage("Opened Project Alpha")}
+                      className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-surface-muted"
+                    >
+                      Project Alpha
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      data-testid="menuitem-project-beta"
+                      onClick={() => setToastMessage("Opened Project Beta")}
+                      className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-surface-muted"
+                    >
+                      Project Beta
+                    </button>
+                  </div>
+                </div>
+                <div className="my-1 border-t border-border" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="menuitem-export"
+                  onClick={() => setToastMessage("Exporting document")}
+                  className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-surface-muted text-accent"
+                >
+                  Export PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Edit Menu */}
+            <div className="relative group">
+              <button
+                type="button"
+                role="menuitem"
+                aria-haspopup="true"
+                data-testid="menu-edit"
+                className="px-3 py-1.5 rounded hover:bg-surface hover:text-text cursor-pointer"
+              >
+                Edit
+              </button>
+              <div
+                role="menu"
+                aria-label="Edit Options"
+                className="hidden group-hover:block absolute z-20 top-full left-0 mt-1 w-36 rounded-md border border-border bg-surface p-1 shadow-lg"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="menuitem-undo"
+                  onClick={() => setToastMessage("Undo action")}
+                  className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-surface-muted"
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-testid="menuitem-redo"
+                  onClick={() => setToastMessage("Redo action")}
+                  className="w-full text-left px-3 py-1.5 rounded text-xs hover:bg-surface-muted"
+                >
+                  Redo
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+      </section>
+
+      {/* Section 8: Contenteditable Rich Text Editor */}
+      <section className="rounded-lg border border-border bg-surface p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">8. Contenteditable Element</h2>
+            <p className="mt-1 text-xs text-muted">
+              Assert text inside <span className="font-mono text-accent">&lt;div contenteditable="true"&gt;</span> and verify inline tags like <span className="font-mono">&lt;strong&gt;</span>.
+            </p>
+          </div>
+          <Badge tone="neutral">contenteditable="true"</Badge>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              data-testid="format-bold-btn"
+              onClick={() => document.execCommand("bold")}
+              className="rounded border border-border px-2.5 py-1 text-xs font-bold hover:bg-surface-muted"
+            >
+              B
+            </button>
+            <button
+              type="button"
+              data-testid="format-italic-btn"
+              onClick={() => document.execCommand("italic")}
+              className="rounded border border-border px-2.5 py-1 text-xs italic hover:bg-surface-muted"
+            >
+              I
+            </button>
+          </div>
+
+          <div
+            contentEditable
+            role="textbox"
+            aria-multiline="true"
+            aria-label="Rich Text Editor Content"
+            data-testid="rich-text-editor"
+            className="min-h-24 rounded border border-border bg-surface-muted p-3 text-sm focus:border-accent focus:outline-none"
+            dangerouslySetInnerHTML={{
+              __html: "This is <strong>bold industrial text</strong> ready for Playwright verification.",
+            }}
+          />
+        </div>
+      </section>
+
+      {/* Section 9: SVG Charts & Canvas */}
+      <section className="rounded-lg border border-border bg-surface p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">9. Interactive SVG & Canvas Pad</h2>
+            <p className="mt-1 text-xs text-muted">
+              SVG charts with accessible role fallbacks and HTML5 canvas drawing pads.
+            </p>
+          </div>
+          <Badge tone="neutral">SVG & Canvas</Badge>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {/* SVG Bar Chart */}
+          <div className="rounded-md border border-border bg-surface-muted p-4 space-y-2">
+            <h3 className="text-xs font-semibold text-muted">Quarterly Telemetry (SVG)</h3>
+            <svg
+              role="img"
+              aria-label="Quarterly Telemetry Bar Chart"
+              data-testid="telemetry-svg-chart"
+              viewBox="0 0 300 120"
+              className="w-full h-32"
+            >
+              {/* Q1 Bar */}
+              <rect
+                data-testid="svg-bar-q1"
+                role="graphics-symbol"
+                aria-label="Q1: 45 operations"
+                x="30"
+                y="55"
+                width="35"
+                height="45"
+                className="fill-accent/70 hover:fill-accent transition-colors cursor-pointer"
+              />
+              <text x="47" y="115" textAnchor="middle" className="text-[10px] fill-current">Q1</text>
+
+              {/* Q2 Bar */}
+              <rect
+                data-testid="svg-bar-q2"
+                role="graphics-symbol"
+                aria-label="Q2: 70 operations"
+                x="95"
+                y="30"
+                width="35"
+                height="70"
+                className="fill-accent/70 hover:fill-accent transition-colors cursor-pointer"
+              />
+              <text x="112" y="115" textAnchor="middle" className="text-[10px] fill-current">Q2</text>
+
+              {/* Q3 Bar */}
+              <rect
+                data-testid="svg-bar-q3"
+                role="graphics-symbol"
+                aria-label="Q3: 85 operations"
+                x="160"
+                y="15"
+                width="35"
+                height="85"
+                className="fill-accent/70 hover:fill-accent transition-colors cursor-pointer"
+              />
+              <text x="177" y="115" textAnchor="middle" className="text-[10px] fill-current">Q3</text>
+
+              {/* Q4 Bar */}
+              <rect
+                data-testid="svg-bar-q4"
+                role="graphics-symbol"
+                aria-label="Q4: 60 operations"
+                x="225"
+                y="40"
+                width="35"
+                height="60"
+                className="fill-accent/70 hover:fill-accent transition-colors cursor-pointer"
+              />
+              <text x="242" y="115" textAnchor="middle" className="text-[10px] fill-current">Q4</text>
+            </svg>
+          </div>
+
+          {/* Canvas Signature Pad */}
+          <div className="rounded-md border border-border bg-surface-muted p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-muted">HTML5 Canvas Pad</h3>
+              <button
+                type="button"
+                data-testid="clear-canvas-btn"
+                onClick={() => {
+                  const canvas = document.querySelector<HTMLCanvasElement>("[data-testid='drawing-canvas']");
+                  const ctx = canvas?.getContext("2d");
+                  if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }}
+                className="text-[11px] text-accent hover:underline"
+              >
+                Clear Pad
+              </button>
+            </div>
+            <canvas
+              data-testid="drawing-canvas"
+              width={260}
+              height={100}
+              aria-label="Interactive signature drawing pad"
+              className="w-full h-24 rounded border border-border bg-background cursor-crosshair"
+            />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

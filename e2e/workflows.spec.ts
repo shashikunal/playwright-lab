@@ -19,7 +19,11 @@ test.describe("enterprise business workflows", () => {
 
     // Clear search and category filter
     await page.getByLabel("Search courses").fill("");
+    const secResponse = page.waitForResponse(
+      (res) => res.url().includes("category=Security") && res.ok(),
+    );
     await page.getByRole("button", { name: "Security" }).click();
+    await secResponse;
     await expect(page.getByText("Security Testing with Auth Storage States")).toBeVisible();
     await expect(page.getByText("Advanced Locators and Frames")).not.toBeVisible();
   });

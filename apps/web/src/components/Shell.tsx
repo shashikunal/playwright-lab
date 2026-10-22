@@ -1,4 +1,4 @@
-import { AlertTriangle, BookOpen, Camera, Crosshair, FileText, GraduationCap, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Camera, Compass, Crosshair, FileText, GraduationCap, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, UserCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -12,8 +12,11 @@ const labs = [
   { to: "/lab/flaky", label: "Flaky Lab", icon: AlertTriangle },
   { to: "/lab/visual", label: "Visual Lab", icon: Camera },
   { to: "/lab/a11y", label: "Accessibility", icon: ShieldCheck },
+  { to: "/lab/browser", label: "Browser Lab", icon: Compass },
   { to: "/app/courses", label: "Courses", icon: BookOpen },
   { to: "/app/enrollments", label: "Enrollment", icon: GraduationCap },
+  { to: "/app/users", label: "Users & Staff", icon: Users },
+  { to: "/app/profile", label: "Profile", icon: UserCheck },
 ];
 
 const planned = ["Performance Lab"];
@@ -116,11 +119,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             {user ? (
               <div className="flex items-center gap-2">
-                <span className="hidden items-center gap-1.5 rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs sm:inline-flex">
+                <Link
+                  to="/app/profile"
+                  className="hidden items-center gap-1.5 rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs sm:inline-flex hover:border-accent"
+                >
                   <User size={12} className="text-accent" />
                   <span className="font-medium text-text">{user.name}</span>
                   <span className="font-mono text-[10px] uppercase text-muted">({user.role})</span>
-                </span>
+                </Link>
                 <button
                   type="button"
                   onClick={logout}

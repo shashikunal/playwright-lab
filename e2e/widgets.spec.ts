@@ -142,6 +142,45 @@ test.describe("widgets lab", () => {
     await expect(page.locator("#shadow-feedback")).toHaveText("Shadow DOM Executed: Automated shadow value");
   });
 
+  test("traverses menubar and triggers nested submenu items", async ({ page }) => {
+    // Hover over File menu
+    await page.getByTestId("menu-file").hover();
+    await expect(page.getByTestId("menuitem-new")).toBeVisible();
+
+    // Hover over Open Recent to reveal nested submenu
+    await page.getByTestId("menuitem-recent").hover();
+    await expect(page.getByTestId("menuitem-project-alpha")).toBeVisible();
+
+    // Click nested Project Alpha
+    await page.getByTestId("menuitem-project-alpha").click();
+    await expect(page.getByText("Opened Project Alpha")).toBeVisible();
+  });
+
+  test("edits and formats text inside contenteditable element", async ({ page }) => {
+    const editor = page.getByTestId("rich-text-editor");
+    await expect(editor).toContainText("bold industrial text");
+    await expect(editor.locator("strong")).toHaveText("bold industrial text");
+
+    // Clear and type new content
+    await editor.click();
+    await editor.fill("Playwright automation contenteditable verify");
+    await expect(editor).toHaveText("Playwright automation contenteditable verify");
+  });
+
+  test("interacts with SVG bar chart and clears canvas pad", async ({ page }) => {
+    // SVG graphics symbols
+    const svgChart = page.getByTestId("telemetry-svg-chart");
+    await expect(svgChart).toBeVisible();
+
+    const q3Bar = page.getByTestId("svg-bar-q3");
+    await expect(q3Bar).toHaveAttribute("aria-label", "Q3: 85 operations");
+
+    // Canvas drawing and clear
+    const canvas = page.getByTestId("drawing-canvas");
+    await expect(canvas).toBeVisible();
+    await page.getByTestId("clear-canvas-btn").click();
+  });
+
   for (const theme of ["light", "dark"] as const) {
     test(`renders in the ${theme} theme`, async ({ page }) => {
       await page.addInitScript((val) => localStorage.setItem("pil-theme", val), theme);

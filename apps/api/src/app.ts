@@ -2,7 +2,9 @@ import cors from "cors";
 import express from "express";
 import { apiError } from "@pil/shared";
 import type { ApiEnv } from "./env.js";
+import { activityRouter } from "./routes/activity.js";
 import { authRouter } from "./routes/auth.js";
+import { browserRouter } from "./routes/browser.js";
 import { coursesRouter } from "./routes/courses.js";
 import { enrollmentsRouter } from "./routes/enrollments.js";
 import { flakyRouter } from "./routes/flaky.js";
@@ -10,6 +12,7 @@ import { formsRouter } from "./routes/forms.js";
 import { healthRouter } from "./routes/health.js";
 import { networkRouter } from "./routes/network.js";
 import { scenariosRouter } from "./routes/scenarios.js";
+import { usersRouter } from "./routes/users.js";
 import { initStore } from "./store/memory.js";
 
 export function createApp(env: ApiEnv) {
@@ -31,10 +34,13 @@ export function createApp(env: ApiEnv) {
   app.use("/api", scenariosRouter);
   app.use("/api/lab/forms", formsRouter);
   app.use("/api/lab/network", networkRouter);
+  app.use("/api/lab/browser", browserRouter);
   app.use("/api/lab/flaky", flakyRouter);
   app.use("/api/app/auth", authRouter);
   app.use("/api/app/courses", coursesRouter);
   app.use("/api/app/enrollments", enrollmentsRouter);
+  app.use("/api/app/users", usersRouter);
+  app.use("/api/app", activityRouter);
   app.use((_req, res) => {
     res.status(404).json(apiError("not_found", "Route not found"));
   });

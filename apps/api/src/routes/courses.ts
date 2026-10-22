@@ -1,6 +1,6 @@
 import { apiError, type CourseListResponse } from "@pil/shared";
 import { Router } from "express";
-import { createCourse, deleteCourse, findUserByToken, getCourseById, getCourses, updateCourse } from "../store/memory.js";
+import { createCourse, deleteCourse, findUserByToken, getCourseById, getCourseDetail, getCourses, updateCourse } from "../store/memory.js";
 
 export const coursesRouter = Router();
 
@@ -40,7 +40,7 @@ coursesRouter.get("/", (req, res) => {
 });
 
 coursesRouter.get("/:id", (req, res) => {
-  const course = getCourseById(req.params.id);
+  const course = getCourseDetail(req.params.id) ?? getCourseById(req.params.id);
   if (!course) {
     res.status(404).json(apiError("not_found", "Course not found"));
     return;

@@ -1,4 +1,4 @@
-import type { Course, Enrollment, EnrollmentStatus, FileUploadResult, FlakyState, UserRole } from "@pil/shared";
+import type { ActivityAction, ActivityItem, Course, CourseDetail, CourseModule, Enrollment, EnrollmentStatus, FileUploadResult, FlakyState, ManagedUser, NotificationPrefs, UserRole, UserStatus } from "@pil/shared";
 
 export type ScenarioControls = {
   latencyMs: number;
@@ -99,6 +99,9 @@ export function resetNamespace(id = "shared"): NamespaceData {
 export function resetAppStore(): void {
   coursesStore = [...initialCourses];
   enrollmentsStore = [...initialEnrollments];
+  managedUsersStore = [...initialManagedUsers];
+  activitiesStore = [...initialActivities];
+  nextManagedUserId = 106;
   nextEnrollmentId = 103;
   resetNamespace("shared");
   resetFlakyState();
@@ -241,6 +244,254 @@ export function addUpload(filename: string, sizeBytes: number, mimeType: string)
 
 export function getUploads(): FileUploadResult[] {
   return uploadsStore;
+}
+
+// Phase 7: Managed Users Store
+export const initialManagedUsers: ManagedUser[] = [
+  {
+    id: "usr_101",
+    name: "Ada Lovelace",
+    email: "ada.lovelace@pil.local",
+    role: "learner",
+    status: "Active",
+    department: "Algorithms & Automation",
+    enrolledCoursesCount: 2,
+    createdAt: "2026-10-15T09:00:00Z",
+  },
+  {
+    id: "usr_102",
+    name: "Alan Turing",
+    email: "alan.turing@pil.local",
+    role: "trainer",
+    status: "Active",
+    department: "Security & Cryptography",
+    enrolledCoursesCount: 0,
+    createdAt: "2026-10-16T10:30:00Z",
+  },
+  {
+    id: "usr_103",
+    name: "Grace Hopper",
+    email: "grace.hopper@pil.local",
+    role: "admin",
+    status: "Active",
+    department: "Infrastructure Operations",
+    enrolledCoursesCount: 1,
+    createdAt: "2026-10-17T11:15:00Z",
+  },
+  {
+    id: "usr_104",
+    name: "Katherine Johnson",
+    email: "katherine.johnson@pil.local",
+    role: "learner",
+    status: "Active",
+    department: "Orbital Data Science",
+    enrolledCoursesCount: 3,
+    createdAt: "2026-10-18T14:45:00Z",
+  },
+  {
+    id: "usr_105",
+    name: "Margaret Hamilton",
+    email: "margaret.hamilton@pil.local",
+    role: "trainer",
+    status: "Inactive",
+    department: "Flight Software Systems",
+    enrolledCoursesCount: 0,
+    createdAt: "2026-10-19T16:20:00Z",
+  },
+];
+
+let managedUsersStore: ManagedUser[] = [...initialManagedUsers];
+let nextManagedUserId = 106;
+
+export function getManagedUsers(options?: {
+  q?: string;
+  role?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+}): { users: ManagedUser[]; total: number; page: number; totalPages: number } {
+  let list = [...managedUsersStore];
+
+  if (options?.q) {
+    const q = options.q.toLowerCase().trim();
+    list = list.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.department.toLowerCase().includes(q),
+    );
+  }
+
+  if (options?.role && options.role !== "all") {
+    list = list.filter((u) => u.role.toLowerCase() === options.role?.toLowerCase());
+  }
+
+  if (options?.status && options.status !== "all") {
+    list = list.filter((u) => u.status.toLowerCase() === options.status?.toLowerCase());
+  }
+
+  // Sorting
+  const sortKey = (options?.sort as keyof ManagedUser) || "name";
+  const asc = options?.order !== "desc";
+  list.sort((a, b) => {
+    const valA = String(a[sortKey] ?? "").toLowerCase();
+    const valB = String(b[sortKey] ?? "").toLowerCase();
+    return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+  });
+
+  const total = list.length;
+  const page = Math.max(1, options?.page || 1);
+  const limit = Math.max(1, options?.limit || 10);
+  const totalPages = Math.ceil(total / limit) || 1;
+  const start = (page - 1) * limit;
+  const paginated = list.slice(start, start + limit);
+
+  return { users: paginated, total, page, totalPages };
+}
+
+export function getManagedUserById(id: string): ManagedUser | undefined {
+  return managedUsersStore.find((u) => u.id === id);
+}
+
+export function createManagedUser(input: Omit<ManagedUser, "id" | "createdAt" | "enrolledCoursesCount">): ManagedUser {
+  const newUser: ManagedUser = {
+    id: `usr_${nextManagedUserId++}`,
+    ...input,
+    enrolledCoursesCount: 0,
+    createdAt: new Date().toISOString(),
+  };
+  managedUsersStore.unshift(newUser);
+  logActivity("user_registered", newUser.email, "admin@pil.local");
+  return newUser;
+}
+
+export function updateManagedUser(id: string, partial: Partial<ManagedUser>): ManagedUser | undefined {
+  const idx = managedUsersStore.findIndex((u) => u.id === id);
+  if (idx === -1) return undefined;
+  managedUsersStore[idx] = { ...managedUsersStore[idx], ...partial };
+  return managedUsersStore[idx];
+}
+
+export function deleteManagedUser(id: string): boolean {
+  const initial = managedUsersStore.length;
+  managedUsersStore = managedUsersStore.filter((u) => u.id !== id);
+  return managedUsersStore.length < initial;
+}
+
+export function bulkUpdateUsers(userIds: string[], action: "activate" | "deactivate"): number {
+  const targetStatus: UserStatus = action === "activate" ? "Active" : "Inactive";
+  let count = 0;
+  for (const user of managedUsersStore) {
+    if (userIds.includes(user.id)) {
+      user.status = targetStatus;
+      count++;
+    }
+  }
+  return count;
+}
+
+// Activity Audit Log
+export const initialActivities: ActivityItem[] = [
+  {
+    id: "act_1",
+    actorEmail: "admin@pil.local",
+    action: "course_created",
+    target: "CI/CD & Parallel Sharding Pipelines",
+    timestamp: "2026-10-21T10:00:00Z",
+  },
+  {
+    id: "act_2",
+    actorEmail: "learner@pil.local",
+    action: "enrollment_submitted",
+    target: "Playwright Core Automations",
+    timestamp: "2026-10-21T11:30:00Z",
+  },
+  {
+    id: "act_3",
+    actorEmail: "admin@pil.local",
+    action: "enrollment_status_changed",
+    target: "enr_101 (Approved)",
+    timestamp: "2026-10-21T12:00:00Z",
+  },
+];
+
+let activitiesStore: ActivityItem[] = [...initialActivities];
+let nextActivityId = 4;
+
+export function getActivities(limit = 10): ActivityItem[] {
+  return activitiesStore.slice(0, limit);
+}
+
+export function logActivity(action: ActivityAction, target: string, actorEmail = "system@pil.local"): ActivityItem {
+  const item: ActivityItem = {
+    id: `act_${nextActivityId++}`,
+    actorEmail,
+    action,
+    target,
+    timestamp: new Date().toISOString(),
+  };
+  activitiesStore.unshift(item);
+  return item;
+}
+
+// Notification Preferences
+let userPreferences: NotificationPrefs = {
+  emailUpdates: true,
+  smsAlerts: false,
+  weeklySummary: true,
+};
+
+export function getUserPreferences(): NotificationPrefs {
+  return userPreferences;
+}
+
+export function updateUserPreferences(partial: Partial<NotificationPrefs>): NotificationPrefs {
+  userPreferences = { ...userPreferences, ...partial };
+  return userPreferences;
+}
+
+// Course Detail helper with syllabus
+export function getCourseDetail(id: string): CourseDetail | undefined {
+  const course = getCourseById(id);
+  if (!course) return undefined;
+
+  const syllabus: CourseModule[] = [
+    {
+      id: "mod_1",
+      title: "Module 1: Architecture, Locators, and Strict Mode",
+      durationMinutes: 45,
+      description: "Deep dive into web-first assertions, role resolution, and accessibility locators.",
+    },
+    {
+      id: "mod_2",
+      title: "Module 2: Network Interception & Route Mocking",
+      durationMinutes: 60,
+      description: "Master page.route, abort conditions, and latency simulation techniques.",
+    },
+    {
+      id: "mod_3",
+      title: "Module 3: Visual Regression & Snapshot Resilience",
+      durationMinutes: 45,
+      description: "Pixel-diff assertions with toHaveScreenshot, dynamic masking, and animation freezing.",
+    },
+    {
+      id: "mod_4",
+      title: "Module 4: Enterprise CI/CD & Sharded Execution",
+      durationMinutes: 60,
+      description: "GitHub Actions sharded runs, HTML trace uploads, and zero-flake pipelines.",
+    },
+  ];
+
+  return {
+    ...course,
+    description: `Comprehensive industrial training module focusing on ${course.title} in production enterprise test pipelines.`,
+    instructorName: "Dr. Evelyn Vance, Principal Test Architect",
+    prerequisites: ["TypeScript 5.x", "Basic DOM & CSS understanding", "Node.js v20+"],
+    syllabus,
+    remainingSeats: Math.max(2, course.seats - 4),
+  };
 }
 
 

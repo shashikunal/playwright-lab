@@ -69,18 +69,19 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 - Strict-mode compliance with duplicate or visually hidden controls.
 - Isolated anti-pattern training on broken label-input associations.
 
-### 2. Intake Form Lab (`/lab/forms`)
-- Form interaction with field-level validation, seat count bounds, date picker, and track selector.
-- Express backend submission (`POST /api/lab/forms/intake`) returning accepted reference ID.
-- Structured HTTP 422 Unprocessable Entity error feedback.
-- Accessible error announcements and keyboard tab navigation.
+### 2. Forms Laboratory (`/lab/forms`)
+- **Native Input Showcase**: Text, password, number, date, search, checkbox, radio group, range slider, and file input with boundary checks.
+- **Accessible Names vs. Anti-patterns**: Compliant `htmlFor`/`id` matching, intentionally unassociated inputs, placeholders, and direct `aria-label` / `aria-labelledby`.
+- **Selectors & Comboboxes**: Native `<select>`, multiple select, custom ARIA 1.2 Combobox with keyboard navigation, and debounced autocomplete search.
+- **Conditional & Multi-step Wizard**: Account type branching (Individual vs Corporate), 3-step wizard with state retention, and duplicate-submit protection with spinner.
 
 ### 3. Advanced Widgets Lab (`/lab/widgets`)
 - **Modals & Dialogs**: Accessible modal dialog (`role="dialog"`), Escape key dismissal, and native browser dialogs (`window.alert`, `window.confirm`, `window.prompt`) with `page.on('dialog')`.
-- **Tabs**: Tablist with active indicator and keyboard left/right arrow switching.
-- **Accordion**: Expand/collapse panels with ARIA `aria-expanded` and `aria-controls`.
-- **Data Grid**: Multi-row selection, ascending/descending column sorting, and pagination.
-- **Toasts**: Auto-dismissing transient toast notifications.
+- **Menubars & Nested Menus**: Accessible `role="menubar"` with keyboard arrow traversal and nested submenus.
+- **Contenteditable Element**: Rich-text editing container with bold/italic formatting and DOM node assertions.
+- **SVG & Canvas Graphics**: Interactive SVG bar charts with accessible table alternatives and HTML5 Canvas drawing pad.
+- **Tabs & Accordions**: Tablist with active indicator, keyboard navigation, and expand/collapse FAQ panels.
+- **Data Grid & Reordering**: Multi-row selection, column sorting, pagination, and HTML5 drag-and-drop task reordering.
 - **Shadow DOM**: Web component with open Shadow DOM pierced cleanly with standard Playwright locators.
 
 ### 4. Scenario Controls & Network Lab (`/lab/network`)
@@ -136,6 +137,23 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
   - Broken `label`-to-`input` associations (`htmlFor` / `id` mismatch).
 - **Remediation Toggle**: In-place fix demonstration turning failing states into compliant controls.
 
+### 11. Browser & Window Interactions Lab (`/lab/browser`)
+- **Multi-Tab & Popups**: Spawning windows via `window.open` and testing with `page.waitForEvent('popup')`.
+- **Same-Origin & Nested Iframes**: Chained `page.frameLocator('iframe[title="..."]')` targeting isolated outer and inner frame scopes.
+- **Storage & Cookies**: Inspecting and evaluating `localStorage`, `sessionStorage`, and `context.cookies()`.
+- **Navigation Guard**: `beforeunload` native leave prompts handled with `page.on('dialog')`.
+- **Browser Permissions & Geolocation**: Emulating coordinates with `context.grantPermissions(['geolocation'])` and `context.setGeolocation()`.
+- **Responsive Viewport Breakpoints**: Mobile hamburger navigation drawer simulation verified via `page.setViewportSize()`.
+- **Keyboard Shortcuts**: Global `Ctrl+K` command search palette modal.
+
+### 12. Enterprise User & Business Management (`/app/users`, `/app/courses/:id`, `/app/profile`)
+- **Personnel Directory (`/app/users`)**: Search, role filtering (Learner, Trainer, Admin), status filtering (Active, Inactive), sorting by name/role/department, and server-driven pagination.
+- **Role-Based Protection**: 403 Forbidden alert and action suppression for learners; read-only directory inspection for trainers; full administrative CRUD for admins.
+- **Modals & Confirmation Workflows**: Accessible "Add User" modal with structured validation, "Edit User" modal, direct status toggling, and non-destructive "Delete Confirmation" dialog.
+- **Bulk Action Toolbar**: Floating context bar with multi-row selection to batch activate or deactivate users in one atomic operation.
+- **Deep-Linked Course Syllabus (`/app/courses/:id`)**: Detailed curriculum view featuring collapsible syllabus module accordions, instructor profile credentials, prerequisites checkmarks, and "Enroll Now" CTA.
+- **Account Settings & Audit Log (`/app/profile`)**: Notification preferences checkboxes (Email updates, SMS alerts, weekly digest) with feedback alerts, and chronological activity audit history.
+
 ---
 
 ## Design System & Theme Engine
@@ -151,8 +169,8 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
 The repository features comprehensive end-to-end testing running in parallel across **Chromium**, **Firefox**, and **WebKit**:
 
-- **Total Test Cases**: **81 tests** across 12 distinct test suites (**243 cross-browser executions**).
-- **Smoke Suite**: 10 high-priority tests tagged `@smoke` verified across all 3 browser engines (30 passing executions).
+- **Total Test Cases**: **99 tests** across 14 distinct test suites (**297 cross-browser executions**).
+- **Smoke Suite**: 14 high-priority tests tagged `@smoke` verified across all 3 browser engines (42 passing executions, 100% pass rate).
 - **Accessibility Suite**: Full WCAG 2.1 AA scanning with `@axe-core/playwright`.
 - **Visual Snapshot Suite**: Golden baseline screenshots generated and validated across Chromium, Firefox, and WebKit on Windows.
 
@@ -160,15 +178,17 @@ The repository features comprehensive end-to-end testing running in parallel acr
 Test Suites:
   ✓ e2e/a11y.spec.ts (4 tests)
   ✓ e2e/auth.spec.ts (5 tests)
+  ✓ e2e/browser.spec.ts (6 tests)
   ✓ e2e/catalogue.spec.ts (7 tests)
   ✓ e2e/flaky.spec.ts (8 tests)
-  ✓ e2e/forms.spec.ts (7 tests)
+  ✓ e2e/forms.spec.ts (11 tests)
   ✓ e2e/locators.spec.ts (6 tests)
   ✓ e2e/network.spec.ts (11 tests)
   ✓ e2e/smoke.spec.ts (3 tests)
   ✓ e2e/theme.spec.ts (4 tests)
+  ✓ e2e/users.spec.ts (8 tests)
   ✓ e2e/visual.spec.ts (6 tests)
-  ✓ e2e/widgets.spec.ts (14 tests)
+  ✓ e2e/widgets.spec.ts (17 tests)
   ✓ e2e/workflows.spec.ts (8 tests)
 ```
 

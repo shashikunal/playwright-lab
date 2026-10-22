@@ -83,6 +83,15 @@ export const scenarioSeed: ScenarioSummary[] = [
     concepts: ["axe-core", "contrast", "screen-readers"],
   },
   {
+    id: "browser",
+    title: "Browser & Window Lab",
+    topic: "browser",
+    difficulty: "advanced",
+    route: "/lab/browser",
+    status: "available",
+    concepts: ["popups", "iframes", "cookies", "geolocation", "responsive"],
+  },
+  {
     id: "perf",
     title: "Performance & Vitals Lab",
     topic: "reliability",

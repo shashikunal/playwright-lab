@@ -27,6 +27,7 @@ export function Courses() {
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
 
   const fetchCourses = useCallback(() => {
+    let ignore = false;
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("q", search);
@@ -35,14 +36,25 @@ export function Courses() {
     fetch(`/api/app/courses?${params.toString()}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
       .then((data: { courses: Course[] }) => {
-        setCourses(data.courses);
-        setLoading(false);
+        if (!ignore) {
+          setCourses(data.courses);
+          setLoading(false);
+        }
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        if (!ignore) setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [search, category]);
 
   useEffect(() => {
-    fetchCourses();
+    const cleanup = fetchCourses();
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [fetchCourses]);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -175,7 +187,11 @@ export function Courses() {
                   <span className="font-mono text-xs font-semibold text-accent">{course.code}</span>
                   <Badge>{course.category}</Badge>
                 </div>
-                <h3 className="mt-2 font-semibold text-text">{course.title}</h3>
+                <h3 className="mt-2 font-semibold text-text">
+                  <Link to={`/app/courses/${course.id}`} className="hover:text-accent">
+                    {course.title}
+                  </Link>
+                </h3>
                 <div className="mt-4 flex items-center justify-between text-xs text-muted">
                   <span>Available Seats: {course.seats}</span>
                   <span className="font-mono text-sm font-semibold text-text">${course.price}</span>
@@ -183,12 +199,20 @@ export function Courses() {
               </div>
 
               <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
-                <Link
-                  to={`/app/enrollments?courseId=${course.id}`}
-                  className="inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90"
-                >
-                  Enroll Now
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/app/courses/${course.id}`}
+                    className="inline-flex items-center justify-center rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-text hover:bg-surface-muted"
+                  >
+                    Details
+                  </Link>
+                  <Link
+                    to={`/app/enrollments?courseId=${course.id}`}
+                    className="inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90"
+                  >
+                    Enroll Now
+                  </Link>
+                </div>
                 {canDelete ? (
                   <button
                     type="button"

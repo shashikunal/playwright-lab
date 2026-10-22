@@ -39,7 +39,7 @@ export type IntakeAccepted = {
   status: "accepted";
 };
 
-export const scenarioTopics = ["locators", "forms", "widgets", "network", "business", "reliability"] as const;
+export const scenarioTopics = ["locators", "forms", "widgets", "network", "business", "reliability", "browser"] as const;
 export const scenarioDifficulties = ["beginner", "intermediate", "advanced"] as const;
 
 export type ScenarioTopic = (typeof scenarioTopics)[number];
@@ -135,4 +135,98 @@ export type FileUploadResult = {
 export type FlakyState = {
   unstableMode: boolean;
   failureCount: number;
+};
+
+// Browser Lab types
+export type BrowserCookieInfo = {
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+};
+
+export type BrowserGeoLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+};
+
+export type AdvancedFormPayload = {
+  username: string;
+  email: string;
+  password?: string;
+  age?: number;
+  birthdate?: string;
+  category?: string;
+  agreeToTerms: boolean;
+  newsletter: boolean;
+  notificationPreference: "email" | "sms" | "none";
+  bio?: string;
+};
+
+// Phase 7: Business Application Types
+export type UserStatus = "Active" | "Inactive" | "Suspended";
+
+export type ManagedUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  department: string;
+  enrolledCoursesCount: number;
+  createdAt: string;
+};
+
+export type UserListResponse = {
+  users: ManagedUser[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
+export type CourseModule = {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  description: string;
+};
+
+export type CourseDetail = Course & {
+  description: string;
+  instructorName: string;
+  prerequisites: string[];
+  syllabus: CourseModule[];
+  remainingSeats: number;
+};
+
+export type ActivityAction =
+  | "user_registered"
+  | "course_created"
+  | "enrollment_submitted"
+  | "enrollment_status_changed"
+  | "user_deactivated";
+
+export type ActivityItem = {
+  id: string;
+  actorEmail: string;
+  action: ActivityAction;
+  target: string;
+  timestamp: string;
+};
+
+export type ActivityListResponse = {
+  activities: ActivityItem[];
+  total: number;
+};
+
+export type NotificationPrefs = {
+  emailUpdates: boolean;
+  smsAlerts: boolean;
+  weeklySummary: boolean;
+};
+
+export type UserProfileResponse = {
+  user: UserProfile;
+  preferences: NotificationPrefs;
 };
