@@ -1,0 +1,22 @@
+# Feature-to-test matrix
+
+Status values: planned, implemented, tested, deferred, blocked.
+`tested` is set only after a passing run in this workspace.
+
+| Feature | Route / API | Behavior | Cases | Playwright concept | Test | Reset | Status |
+|---|---|---|---|---|---|---|---|
+| Health | `GET /api/health` | Returns `{ status: "ok" }` from Express | positive | APIRequestContext | `e2e/smoke.spec.ts` | none | tested |
+| Overview health UI | `/` | Shows healthy status from the API, not local fake success | positive, error UI exists | web-first assertion | `e2e/smoke.spec.ts` | none | tested |
+| Not found | `*` | Unknown route explains itself and links home | negative | navigation | `e2e/smoke.spec.ts` | none | tested |
+| Theme persistence | shell | Light/dark orange themes persist in `localStorage` key `pil-theme` | both themes, reload | storage, locators | `e2e/theme.spec.ts` | clear site data | tested |
+| Reduced motion | global CSS | Animations collapse when `prefers-reduced-motion` is set | media query emulate | media query | `e2e/theme.spec.ts` | none | tested |
+| Locator Gym | `/lab/locators` | Role, label, placeholder, title, test id, nested filter, isolated defects | positive, strict count, hidden | role, label, filter | `e2e/locators.spec.ts` | none | tested |
+| Intake form | `/lab/forms`, `POST /api/lab/forms/intake` | Client errors, then Express 200 `{ id, status: "accepted" }` or 422 `details` | valid, invalid | label, keyboard, API | `e2e/forms.spec.ts` | restart API | tested |
+| Scenario catalogue | `/`, `GET /api/scenarios` | Lists scenarios from Express. Available cards link. Planned cards do not. Filters use `q`, `topic`, `difficulty`. Unknown topic or difficulty returns 400 | positive, empty, invalid query | navigation, API | `e2e/catalogue.spec.ts` | none | tested |
+| Widgets | `/lab/widgets` | Modal & native dialogs, tabs, accordions, data grid, toasts, shadow DOM | positive, keyboard, alert/confirm/prompt | dialog, tabs, shadow | `e2e/widgets.spec.ts` | none | tested |
+| Scenario Control Center | `/lab/network`, `/api/lab/network/*` | Configurable latency, HTTP status code override, empty state, page.route | latency, errors, mocking | page.route, waitForResponse, auto-wait | `e2e/network.spec.ts` | `POST /api/lab/network/reset` | tested |
+| Auth and enrollment | `/login`, `/app/courses`, `/app/enrollments` | RBAC sessions, protected routes, course CRUD, multi-step enrollment wizard, status transitions | positive, negative, roles, wizard | storageState, forms, dialogs, API | `e2e/auth.spec.ts`, `e2e/workflows.spec.ts` | `POST /api/app/enrollments/reset` | tested |
+| Flaky Lab & File Ops | `/lab/flaky`, `/api/lab/flaky/*` | File upload/download, actionability auto-waiting, dynamic DOM swap, intermittent 503 recovery | positive, negative, upload/download | setInputFiles, waitForEvent('download'), actionability | `e2e/flaky.spec.ts` | `POST /api/lab/flaky/reset` | tested |
+| Visual Regression Lab | `/lab/visual` | toHaveScreenshot component snapshots, volatile timestamp/ID masking, animation freezing, visual drift | positive, masking, animations, diffs | toHaveScreenshot, mask, animations | `e2e/visual.spec.ts` | none | tested |
+| Accessibility Audit Lab | `/lab/a11y` | Automated WCAG 2.1 AA audits, isolated defect inspection, remediation toggle | positive, axe defects, remediation | @axe-core/playwright, contrast, ARIA | `e2e/a11y.spec.ts` | none | tested |
+| Performance & Vitals Lab | `/lab/perf` | Core Web Vitals telemetry, CDP metrics, resource timing | — | cdp-session, web-vitals | — | — | planned |

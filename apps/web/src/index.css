@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --pil-bg: #ffffff;
+  --pil-surface: #ffffff;
+  --pil-surface-muted: #fff7ed;
+  --pil-text: #1c1917;
+  --pil-muted: #57534e;
+  --pil-border: #e7e5e4;
+  --pil-accent: #ea580c;
+  --pil-accent-fg: #ffffff;
+  --pil-focus: #ea580c;
+  --pil-success: #047857;
+  --pil-success-bg: #ecfdf5;
+  --pil-warning: #b45309;
+  --pil-warning-bg: #fffbeb;
+  --pil-danger: #b91c1c;
+  --pil-danger-bg: #fef2f2;
+  color-scheme: light;
+}
+
+.dark {
+  --pil-bg: #0a0a0a;
+  --pil-surface: #171717;
+  --pil-surface-muted: #1c1410;
+  --pil-text: #fafaf9;
+  --pil-muted: #a8a29e;
+  --pil-border: #292524;
+  --pil-accent: #f97316;
+  --pil-accent-fg: #0a0a0a;
+  --pil-focus: #f97316;
+  --pil-success: #34d399;
+  --pil-success-bg: #052e26;
+  --pil-warning: #fbbf24;
+  --pil-warning-bg: #2a1d08;
+  --pil-danger: #f87171;
+  --pil-danger-bg: #2a1212;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-bg: var(--pil-bg);
+  --color-surface: var(--pil-surface);
+  --color-surface-muted: var(--pil-surface-muted);
+  --color-text: var(--pil-text);
+  --color-muted: var(--pil-muted);
+  --color-border: var(--pil-border);
+  --color-accent: var(--pil-accent);
+  --color-accent-fg: var(--pil-accent-fg);
+  --color-focus: var(--pil-focus);
+  --color-success: var(--pil-success);
+  --color-success-bg: var(--pil-success-bg);
+  --color-warning: var(--pil-warning);
+  --color-warning-bg: var(--pil-warning-bg);
+  --color-danger: var(--pil-danger);
+  --color-danger-bg: var(--pil-danger-bg);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--pil-bg);
+  color: var(--pil-text);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--pil-focus);
+  outline-offset: 2px;
+}
+
+@keyframes pil-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.pil-pulse {
+  animation: pil-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

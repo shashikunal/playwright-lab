@@ -1,0 +1,30 @@
+{
+  "name": "playwright-industrial-lab",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @pil/shared && concurrently -n api,web -c blue,orange \"npm run dev -w @pil/api\" \"npm run dev -w @pil/web\"",
+    "build": "npm run build -w @pil/shared && npm run build -w @pil/api && npm run build -w @pil/web",
+    "typecheck": "npm run build -w @pil/shared && npm run typecheck -w @pil/api && npm run typecheck -w @pil/web",
+    "lint": "eslint .",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@eslint/js": "^9.28.0",
+    "@playwright/test": "^1.52.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.28.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.2.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
