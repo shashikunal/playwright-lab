@@ -1,6 +1,13 @@
 import { apiError, type NetworkItem, type NetworkListResponse } from "@pil/shared";
 import { Router } from "express";
-import { defaultScenario, getScenarioControls, resetNamespace, updateScenarioControls } from "../store/memory.js";
+import {
+  defaultScenario,
+  getScenarioControls,
+  getStreamRecords,
+  resetNamespace,
+  resetStreamRecords,
+  updateScenarioControls,
+} from "../store/memory.js";
 
 export const networkRouter = Router();
 
@@ -25,11 +32,12 @@ networkRouter.get("/controls", (_req, res) => {
 });
 
 networkRouter.post("/controls", (req, res) => {
-  const { latencyMs, empty, statusOverride } = req.body ?? {};
+  const { latencyMs, empty, statusOverride, simulateTimeout } = req.body ?? {};
   const updated = updateScenarioControls("shared", {
     ...(typeof latencyMs === "number" ? { latencyMs } : {}),
     ...(typeof empty === "boolean" ? { empty } : {}),
     ...(statusOverride === null || typeof statusOverride === "number" ? { statusOverride } : {}),
+    ...(typeof simulateTimeout === "boolean" ? { simulateTimeout } : {}),
   });
   res.json({ scenario: updated });
 });
@@ -37,12 +45,18 @@ networkRouter.post("/controls", (req, res) => {
 networkRouter.post("/reset", (_req, res) => {
   resetNamespace("shared");
   itemsStore = [...initialItems];
+  resetStreamRecords();
   res.json({ status: "ok", scenario: defaultScenario() });
 });
 
-// Items fetcher with latency and status override
+// Items fetcher with latency, timeout, and status override
 networkRouter.get("/items", async (req, res) => {
   const scenario = getScenarioControls("shared");
+
+  if (scenario.simulateTimeout) {
+    res.status(504).json(apiError("gateway_timeout", "Simulated network timeout: gateway failed to respond within 3000ms"));
+    return;
+  }
 
   if (scenario.latencyMs > 0) {
     await sleep(scenario.latencyMs);
@@ -59,6 +73,10 @@ networkRouter.get("/items", async (req, res) => {
         ? "Forbidden: insufficient permissions for telemetry access"
         : code === 404
         ? "Not Found: requested telemetry resource was not found"
+        : code === 409
+        ? "Conflict: target state modification conflict detected"
+        : code === 422
+        ? "Unprocessable Entity: payload validation constraints violated"
         : code === 429
         ? "Too Many Requests: rate limit of 60 req/min exceeded"
         : code === 500
@@ -124,3 +142,25 @@ networkRouter.post("/items", async (req, res) => {
   itemsStore.unshift(newItem);
   res.status(201).json(newItem);
 });
+
+// Infinite stream pagination endpoint
+networkRouter.get("/stream", (req, res) => {
+  const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+  const limit = req.query.limit ? Math.max(1, Math.min(20, Number(req.query.limit))) : 5;
+  const result = getStreamRecords(cursor, limit);
+  res.json(result);
+});
+
+// Race condition simulation endpoint
+networkRouter.get("/race", async (req, res) => {
+  const speed = req.query.speed === "slow" ? "slow" : "fast";
+  const delay = speed === "slow" ? 800 : 50;
+  await sleep(delay);
+  res.json({
+    queryId: String(req.query.q || ""),
+    speed,
+    delayMs: delay,
+    timestamp: new Date().toISOString(),
+  });
+});
+

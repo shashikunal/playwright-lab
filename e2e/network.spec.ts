@@ -66,6 +66,58 @@ test.describe("scenario controls and network lab", () => {
     await expect(empty).toContainText("No items matching query");
   });
 
+  test("handles HTTP 409 Conflict and 422 Unprocessable Entity status overrides", async ({
+    page,
+  }) => {
+    // 409 Conflict
+    await page.getByLabel("Status code override").selectOption("409");
+    await page.getByRole("button", { name: "Fetch Telemetry Records" }).click();
+    const alert = page.getByRole("alert");
+    await expect(alert).toBeVisible();
+    await expect(alert).toContainText("Status: 409");
+    await expect(alert).toContainText("Conflict");
+
+    // 422 Unprocessable Entity
+    await page.getByLabel("Status code override").selectOption("422");
+    await page.getByRole("button", { name: "Fetch Telemetry Records" }).click();
+    await expect(alert).toContainText("Status: 422");
+    await expect(alert).toContainText("Unprocessable Entity");
+  });
+
+  test("simulates network timeout and displays gateway timeout error", async ({ page }) => {
+    await page.getByLabel("Simulate Network Timeout (504 Abort)").check();
+    await expect(page.getByText("Fault: Timeout / 504 Active")).toBeVisible();
+
+    await page.getByRole("button", { name: "Fetch Telemetry Records" }).click();
+
+    const alert = page.getByRole("alert");
+    await expect(alert).toBeVisible();
+    await expect(alert).toContainText("Status: 504");
+    await expect(alert).toContainText("Simulated network timeout");
+  });
+
+  test("paginates through infinite-scroll stream chunks", async ({ page }) => {
+    await page.getByRole("button", { name: "Initialize Stream" }).click();
+
+    const streamContainer = page.getByTestId("stream-container");
+    await expect(streamContainer).toBeVisible();
+    const initialRecords = streamContainer.getByTestId("stream-record");
+    await expect(initialRecords).toHaveCount(5);
+
+    // Load next chunk
+    await page.getByRole("button", { name: "Load Next Telemetry Chunk" }).click();
+    await expect(initialRecords).toHaveCount(10);
+  });
+
+  test("demonstrates out-of-order race query resolution", async ({ page }) => {
+    await page.getByRole("button", { name: "Dispatch Slow Query (800ms)" }).click();
+    await page.getByRole("button", { name: "Dispatch Fast Query (50ms)" }).click();
+
+    const winnerBanner = page.getByTestId("race-winner-banner");
+    await expect(winnerBanner).toBeVisible();
+    await expect(winnerBanner).toContainText("Winner:");
+  });
+
   test("performs optimistic UI update and rolls back on server 500 error", async ({ page }) => {
     // Configure server to return 500
     await page.getByLabel("Status code override").selectOption("500");

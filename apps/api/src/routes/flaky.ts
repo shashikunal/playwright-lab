@@ -1,6 +1,15 @@
 import { apiError } from "@pil/shared";
 import { Router } from "express";
-import { addUpload, getFlakyState, getUploads, resetFlakyState, updateFlakyState } from "../store/memory.js";
+import {
+  addUpload,
+  decrementBoundedRetry,
+  getBoundedRetryRemaining,
+  getFlakyState,
+  getUploads,
+  resetBoundedRetry,
+  resetFlakyState,
+  updateFlakyState,
+} from "../store/memory.js";
 
 export const flakyRouter = Router();
 
@@ -86,8 +95,31 @@ flakyRouter.get("/state", (_req, res) => {
   });
 });
 
-// 6. Reset endpoint
+// 6. Bounded retry endpoint (fails N times before succeeding)
+flakyRouter.get("/retryable", (_req, res) => {
+  const remaining = getBoundedRetryRemaining();
+  if (remaining > 0) {
+    decrementBoundedRetry();
+    res.status(503).json(apiError("service_unavailable", `Service degraded: retry required. Remaining failures: ${remaining}`));
+    return;
+  }
+  res.json({
+    status: "success",
+    message: "Resource successfully resolved after bounded retries",
+    attemptsRemaining: 0,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+flakyRouter.post("/retryable/reset", (req, res) => {
+  const count = typeof req.body?.count === "number" ? req.body.count : 2;
+  resetBoundedRetry(count);
+  res.json({ status: "ok", count });
+});
+
+// 7. Reset endpoint
 flakyRouter.post("/reset", (_req, res) => {
   resetFlakyState();
   res.json({ status: "ok", message: "Flaky lab state reset to baseline" });
 });
+

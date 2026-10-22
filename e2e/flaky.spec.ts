@@ -121,6 +121,106 @@ test.describe("flaky lab, anti-patterns, and file operations", () => {
     await expect(page.getByRole("status")).toContainText("Stable payload delivered successfully");
   });
 
+  test("handles bounded retries simulation recovery", async ({ page }) => {
+    await page.goto("/lab/flaky");
+
+    const retryBtn = page.getByRole("button", { name: "Execute Bounded Retry API" });
+
+    // Attempt 1 -> 503
+    await retryBtn.click();
+    await expect(page.getByRole("alert")).toContainText("503");
+
+    // Attempt 2 -> 503
+    await retryBtn.click();
+    await expect(page.getByRole("alert")).toContainText("503");
+
+    // Attempt 3 -> Success!
+    await retryBtn.click();
+    await expect(page.getByRole("status")).toContainText(
+      "Resource successfully resolved after bounded retries",
+    );
+  });
+
+  test("resolves strict mode duplicate locator conflicts via scoping", async ({ page }) => {
+    await page.goto("/lab/flaky");
+
+    // Attempting page.getByRole("button", { name: "Confirm Action" }) would violate strict mode
+    // Scoped locator cleanly isolates the target element:
+    const primaryBtn = page
+      .locator("#primary-action-container")
+      .getByRole("button", { name: "Confirm Action" });
+    await primaryBtn.click();
+    await expect(page.getByText("Primary scope action confirmed")).toBeVisible();
+
+    const secondaryBtn = page
+      .locator("#secondary-action-container")
+      .getByRole("button", { name: "Confirm Action" });
+    await secondaryBtn.click();
+    await expect(page.getByText("Secondary scope action confirmed")).toBeVisible();
+  });
+
+  test("handles unexpected promo overlay with page.addLocatorHandler", async ({ page }) => {
+    await page.goto("/lab/flaky");
+
+    // Register locator handler to automatically dismiss unexpected promo dialog
+    const promoDialog = page.getByRole("dialog", { name: "Special Enterprise Offer" });
+    await page.addLocatorHandler(promoDialog, async (overlay) => {
+      await overlay.getByRole("button", { name: "Dismiss Offer" }).click();
+    });
+
+    // Trigger unexpected dialog which would normally block subsequent clicks
+    await page.getByRole("button", { name: "Simulate Unexpected Promo Dialog" }).click();
+
+    // Trigger any subsequent interaction; Playwright's locator handler automatically intercepts and clears it!
+    const delayedBtn = page.getByRole("button", { name: "Execute Delayed Action" });
+    await delayedBtn.click();
+    await expect(promoDialog).not.toBeVisible();
+  });
+
+  test("demonstrates condition-based waiting over arbitrary sleeps @smoke", async ({ page }) => {
+    await page.goto("/lab/flaky");
+
+    await page.getByRole("button", { name: "Fetch Delayed Token" }).click();
+
+    // Web-first assertion auto-waits for randomized async completion without manual sleep
+    const tokenCard = page.getByTestId("auth-token-card");
+    await expect(tokenCard).toBeVisible();
+    await expect(tokenCard).toContainText("Token: tok_auth_");
+  });
+
+  test("captures console.error and pageerror diagnostic events", async ({ page }) => {
+    const consoleMessages: string[] = [];
+    const pageErrors: string[] = [];
+
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleMessages.push(msg.text());
+      }
+    });
+
+    page.on("pageerror", (err) => {
+      pageErrors.push(err.message);
+    });
+
+    await page.goto("/lab/flaky");
+
+    // Dispatch console error
+    await page.getByRole("button", { name: "Dispatch Console Error" }).click();
+    await expect(
+      page.getByText("Dispatched console.error event for Playwright listener"),
+    ).toBeVisible();
+    expect(consoleMessages.some((m) => m.includes("simulated console error event"))).toBe(true);
+
+    // Dispatch window pageerror
+    await page.getByRole("button", { name: "Dispatch Window PageError" }).click();
+    await expect(
+      page.getByText("Dispatched window.onerror event for Playwright listener"),
+    ).toBeVisible();
+    await expect
+      .poll(() => pageErrors.some((m) => m.includes("simulated pageerror")), { timeout: 3000 })
+      .toBe(true);
+  });
+
   for (const theme of ["light", "dark"] as const) {
     test(`renders flaky lab in ${theme} theme`, async ({ page }) => {
       await page.addInitScript((val) => localStorage.setItem("pil-theme", val), theme);

@@ -1,5 +1,18 @@
-import type { NetworkItem, NetworkListResponse, ScenarioControlState } from "@pil/shared";
-import { AlertTriangle, CheckCircle2, Clock, Loader2, RefreshCw, RotateCcw, Search, Sliders, WifiOff } from "lucide-react";
+import type { NetworkItem, NetworkListResponse, ScenarioControlState, StreamRecord, StreamResponse } from "@pil/shared";
+import {
+  AlertTriangle,
+  ArrowUpDown,
+  CheckCircle2,
+  Clock,
+  Layers,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Sliders,
+  WifiOff,
+  Zap,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -16,6 +29,7 @@ export function NetworkLab() {
     latencyMs: 0,
     empty: false,
     statusOverride: null,
+    simulateTimeout: false,
   });
   const [controlsLoading, setControlsLoading] = useState(false);
 
@@ -27,6 +41,19 @@ export function NetworkLab() {
   const [searchResults, setSearchResults] = useState<NetworkItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [abortCount, setAbortCount] = useState(0);
+
+  // Stream pagination state
+  const [streamRecords, setStreamRecords] = useState<StreamRecord[]>([]);
+  const [streamCursor, setStreamCursor] = useState<string | null>(null);
+  const [streamHasMore, setStreamHasMore] = useState(true);
+  const [streamLoading, setStreamLoading] = useState(false);
+  const [streamTotal, setStreamTotal] = useState(0);
+
+  // Out-of-order race condition state
+  const [raceActiveQuery, setRaceActiveQuery] = useState<string | null>(null);
+  const [raceResult, setRaceResult] = useState<string | null>(null);
+  const [raceUseCancellation, setRaceUseCancellation] = useState(true);
+  const raceAbortRef = useRef<AbortController | null>(null);
 
   // Optimistic updates state
   const [optimisticItems, setOptimisticItems] = useState<
@@ -77,6 +104,10 @@ export function NetworkLab() {
       if (data.scenario) setControls(data.scenario);
       setFetchState({ status: "idle" });
       setOptimisticError(null);
+      setStreamRecords([]);
+      setStreamCursor(null);
+      setStreamHasMore(true);
+      setRaceResult(null);
     } finally {
       setControlsLoading(false);
     }
@@ -144,6 +175,53 @@ export function NetworkLab() {
       clearTimeout(timer);
     };
   }, [searchQuery]);
+
+  // Stream pagination fetch
+  const handleLoadStream = async () => {
+    setStreamLoading(true);
+    try {
+      const url = streamCursor
+        ? `/api/lab/network/stream?cursor=${encodeURIComponent(streamCursor)}&limit=5`
+        : `/api/lab/network/stream?limit=5`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data: StreamResponse = await res.json();
+        setStreamRecords((prev) => (streamCursor ? [...prev, ...data.items] : data.items));
+        setStreamCursor(data.nextCursor);
+        setStreamHasMore(data.hasMore);
+        setStreamTotal(data.total);
+      }
+    } finally {
+      setStreamLoading(false);
+    }
+  };
+
+  // Dispatch race query
+  const handleDispatchRace = async (speed: "fast" | "slow") => {
+    if (raceUseCancellation && raceAbortRef.current) {
+      raceAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    raceAbortRef.current = controller;
+
+    setRaceActiveQuery(`Query [${speed.toUpperCase()}] running...`);
+    try {
+      const res = await fetch(`/api/lab/network/race?speed=${speed}&q=${speed}`, {
+        signal: raceUseCancellation ? controller.signal : undefined,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRaceResult(`Winner: ${data.speed.toUpperCase()} query resolved at ${new Date(data.timestamp).toLocaleTimeString()}`);
+        setRaceActiveQuery(null);
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        // Aborted cleanly
+        return;
+      }
+      setRaceActiveQuery("Failed or cancelled");
+    }
+  };
 
   // Optimistic Add Item
   const handleAddOptimistic = async (e: React.FormEvent) => {
@@ -230,6 +308,7 @@ export function NetworkLab() {
             <div className="mt-3 flex flex-col gap-2">
               {[
                 { label: "Fast (0ms)", value: 0 },
+                { label: "Fast (250ms)", value: 250 },
                 { label: "Moderate (800ms)", value: 800 },
                 { label: "Slow (2500ms)", value: 2500 },
               ].map((opt) => (
@@ -268,6 +347,8 @@ export function NetworkLab() {
                 <option value="401">401 Unauthorized</option>
                 <option value="403">403 Forbidden</option>
                 <option value="404">404 Not Found</option>
+                <option value="409">409 Conflict</option>
+                <option value="422">422 Unprocessable Entity</option>
                 <option value="429">429 Too Many Requests</option>
                 <option value="500">500 Internal Server Error</option>
               </select>
@@ -277,13 +358,13 @@ export function NetworkLab() {
             </div>
           </div>
 
-          {/* Empty state flag */}
-          <div className="rounded-md border border-border bg-surface-muted p-4">
+          {/* Fault Toggles */}
+          <div className="rounded-md border border-border bg-surface-muted p-4 space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
               <WifiOff size={14} />
-              Data State
+              Fault Injection
             </div>
-            <div className="mt-3">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <input
                   id="simulate-empty-checkbox"
@@ -296,9 +377,19 @@ export function NetworkLab() {
                   Simulate Empty Response
                 </label>
               </div>
-              <p className="mt-2 text-xs text-muted">
-                Forces backend to return empty collections (<code className="font-mono">[]</code>).
-              </p>
+
+              <div className="flex items-center gap-2">
+                <input
+                  id="simulate-timeout-checkbox"
+                  type="checkbox"
+                  checked={Boolean(controls.simulateTimeout)}
+                  onChange={(e) => updateControls({ simulateTimeout: e.target.checked })}
+                  className="size-4 rounded accent-accent"
+                />
+                <label htmlFor="simulate-timeout-checkbox" className="text-sm cursor-pointer">
+                  Simulate Network Timeout (504 Abort)
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -313,180 +404,263 @@ export function NetworkLab() {
           <Badge tone={controls.empty ? "warning" : "neutral"}>
             Data: {controls.empty ? "Empty Collection" : "Populated"}
           </Badge>
+          {controls.simulateTimeout ? (
+            <Badge tone="warning">Fault: Timeout / 504 Active</Badge>
+          ) : null}
         </div>
       </section>
 
       {/* Section 2: Live Asynchronous Data Fetcher */}
       <section className="rounded-lg border border-border bg-surface p-6 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold">2. Asynchronous Data Fetcher</h2>
-            <p className="mt-1 text-xs text-muted">
-              Test auto-waiting assertions and loading spinners without flaky hardcoded timeouts.
-            </p>
-          </div>
+        <div className="flex items-center gap-2 border-b border-border pb-3">
+          <RefreshCw className="size-5 text-accent" />
+          <h2 className="text-xl font-semibold">2. Live Telemetry Fetcher</h2>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Calls <code className="font-mono">GET /api/lab/network/items</code>. Respects the configured latency and error status overrides.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button onClick={handleFetchItems} disabled={fetchState.status === "loading"}>
             {fetchState.status === "loading" ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
-                Fetching Data...
+                <Loader2 size={16} className="animate-spin" /> Fetching Telemetry...
               </>
             ) : (
-              <>
-                <RefreshCw size={16} />
-                Fetch Telemetry Records
-              </>
+              "Fetch Telemetry Records"
             )}
           </Button>
+
+          {fetchState.status === "success" ? (
+            <span className="text-xs text-muted">
+              Completed in <strong className="text-text">{fetchState.durationMs}ms</strong>
+            </span>
+          ) : null}
         </div>
 
-        {/* Dynamic Fetch State Container */}
-        <div className="mt-6 rounded-md border border-border bg-surface-muted p-4">
-          {fetchState.status === "idle" ? (
-            <p className="text-xs text-muted">Click &ldquo;Fetch Telemetry Records&rdquo; to query backend.</p>
-          ) : fetchState.status === "loading" ? (
-            <div className="flex items-center gap-3 py-6 text-sm text-muted" role="status" aria-label="Loading telemetry">
-              <Loader2 size={20} className="animate-spin text-accent" />
+        {/* Fetcher State Display */}
+        <div className="mt-4">
+          {fetchState.status === "loading" ? (
+            <div role="status" className="flex items-center gap-2 rounded-md border border-border bg-surface-muted p-4 text-sm text-muted">
+              <Loader2 size={18} className="animate-spin text-accent" />
               <span>Waiting for Express backend response...</span>
             </div>
           ) : fetchState.status === "error" ? (
-            <div role="alert" className="rounded-md border border-danger/40 bg-danger-bg p-4 text-sm text-danger">
+            <div role="alert" className="rounded-md border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
               <p className="font-semibold">Request Failed (Status: {fetchState.code})</p>
               <p className="mt-1 text-xs">{fetchState.message}</p>
-              <p className="mt-2 font-mono text-[11px] text-muted">Round-trip duration: {fetchState.durationMs}ms</p>
             </div>
-          ) : fetchState.data.items.length === 0 ? (
-            <div className="py-8 text-center" data-testid="empty-state">
-              <p className="text-sm font-semibold text-text">No items matching query</p>
-              <p className="mt-1 text-xs text-muted">The backend returned an empty collection.</p>
-            </div>
-          ) : (
-            <div>
-              <div className="flex items-center justify-between pb-3 text-xs text-muted">
-                <span>Loaded {fetchState.data.items.length} records</span>
-                <span className="font-mono">Server latency: {fetchState.data.latencyApplied}ms</span>
+          ) : fetchState.status === "success" ? (
+            fetchState.data.items.length === 0 ? (
+              <div role="status" data-testid="empty-state" className="rounded-md border border-border bg-surface-muted p-6 text-center text-sm text-muted">
+                No items matching query (Empty Response).
               </div>
-              <ul className="divide-y divide-border" data-testid="telemetry-list">
+            ) : (
+              <div data-testid="telemetry-list" className="divide-y divide-border rounded-md border border-border">
                 {fetchState.data.items.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between py-2 text-sm">
+                  <div key={item.id} className="flex items-center justify-between p-3 text-sm">
                     <div>
-                      <span className="font-medium text-text">{item.title}</span>
-                      <span className="ml-2 font-mono text-xs text-muted">[{item.id}]</span>
+                      <span className="font-mono text-xs font-semibold text-accent">{item.id}</span>
+                      <p className="font-medium text-text">{item.title}</p>
                     </div>
-                    <Badge>{item.category}</Badge>
-                  </li>
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      <Badge tone="neutral">{item.category}</Badge>
+                      <span className="font-mono">{item.latencyMs}ms</span>
+                    </div>
+                  </div>
                 ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Section 3: Debounced Live Search with Request Cancellation */}
-      <section className="rounded-lg border border-border bg-surface p-6 shadow-xs">
-        <h2 className="text-xl font-semibold">3. Debounced Search & Race Conditions</h2>
-        <p className="mt-1 text-xs text-muted">
-          Practise testing debounced typing and request cancellation using <code className="font-mono">AbortController</code>.
-        </p>
-
-        <div className="mt-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted" />
-            <input
-              type="search"
-              aria-label="Search telemetry"
-              placeholder="Type to filter telemetry (e.g. audit, cache, pipeline)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface pl-9 pr-4 py-2 text-sm text-text focus:outline-hidden"
-            />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted">
-            <span>
-              {searchLoading ? "Searching backend..." : `Found ${searchResults.length} matching items`}
-            </span>
-            <span className="font-mono">Cancelled in-flight requests: {abortCount}</span>
-          </div>
-
-          {searchResults.length > 0 ? (
-            <ul className="mt-3 divide-y divide-border rounded-md border border-border p-2 text-sm">
-              {searchResults.map((item) => (
-                <li key={item.id} className="py-1.5 flex items-center justify-between">
-                  <span>{item.title}</span>
-                  <Badge>{item.category}</Badge>
-                </li>
-              ))}
-            </ul>
+              </div>
+            )
           ) : null}
         </div>
       </section>
 
-      {/* Section 4: Optimistic Updates with Rollback */}
+      {/* Section 3: Infinite Stream & Cursor Pagination Sandbox */}
       <section className="rounded-lg border border-border bg-surface p-6 shadow-xs">
-        <h2 className="text-xl font-semibold">4. Optimistic UI Updates & Rollback</h2>
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <Layers className="size-5 text-accent" />
+            <h2 className="text-xl font-semibold">3. Telemetry Ingestion Stream (Cursor Pagination)</h2>
+          </div>
+          <span className="text-xs font-mono text-muted">
+            {streamRecords.length} of {streamTotal || 25} Records
+          </span>
+        </div>
         <p className="mt-1 text-xs text-muted">
-          Item renders instantly. If backend returns an error (try setting Status 500 above), the UI rolls back and displays an error alert.
+          Paginates via <code className="font-mono">GET /api/lab/network/stream?cursor=...</code>. Practice continuous stream assertion and auto-waiting on cursor updates.
+        </p>
+
+        <div className="mt-4">
+          <Button onClick={handleLoadStream} disabled={streamLoading || (!streamHasMore && streamRecords.length > 0)}>
+            {streamLoading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Loading Stream...
+              </>
+            ) : streamRecords.length === 0 ? (
+              "Initialize Stream"
+            ) : streamHasMore ? (
+              "Load Next Telemetry Chunk"
+            ) : (
+              "All Records Loaded"
+            )}
+          </Button>
+        </div>
+
+        {streamRecords.length > 0 ? (
+          <div data-testid="stream-container" className="mt-4 divide-y divide-border rounded-md border border-border max-h-64 overflow-y-auto">
+            {streamRecords.map((rec) => (
+              <div key={rec.id} data-testid="stream-record" className="p-3 text-xs flex items-center justify-between">
+                <div>
+                  <span className="font-mono font-bold text-accent mr-2">{rec.id}</span>
+                  <span className="font-medium text-text">{rec.payload}</span>
+                </div>
+                <Badge tone="neutral">{rec.topic}</Badge>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {/* Section 4: Out-of-Order Race Condition Simulator */}
+      <section className="rounded-lg border border-border bg-surface p-6 shadow-xs">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
+          <Zap className="size-5 text-accent" />
+          <h2 className="text-xl font-semibold">4. Out-of-Order Query Simulator</h2>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Dispatches slow query (800ms) then fast query (50ms). When request cancellation is enabled via <code className="font-mono">AbortController</code>, older slow responses will not overwrite newer fast responses.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <Button variant="ghost" onClick={() => handleDispatchRace("slow")}>
+            Dispatch Slow Query (800ms)
+          </Button>
+          <Button onClick={() => handleDispatchRace("fast")}>
+            Dispatch Fast Query (50ms)
+          </Button>
+          <label className="flex items-center gap-2 text-xs cursor-pointer text-muted">
+            <input
+              type="checkbox"
+              checked={raceUseCancellation}
+              onChange={(e) => setRaceUseCancellation(e.target.checked)}
+              className="size-4 rounded accent-accent"
+            />
+            <span>Enable AbortController Cancellation</span>
+          </label>
+        </div>
+
+        {raceActiveQuery ? (
+          <p className="mt-2 text-xs text-muted animate-pulse">{raceActiveQuery}</p>
+        ) : null}
+
+        {raceResult ? (
+          <div data-testid="race-winner-banner" className="mt-3 rounded-md border border-accent/40 bg-accent/5 p-3 text-xs text-text font-mono">
+            {raceResult}
+          </div>
+        ) : null}
+      </section>
+
+      {/* Section 5: Search with Debounce & Cancellation */}
+      <section className="rounded-lg border border-border bg-surface p-6 shadow-xs">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
+          <Search className="size-5 text-accent" />
+          <h2 className="text-xl font-semibold">5. Debounced Search with AbortController</h2>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Debounced at 200ms with automatic cancellation of superseded fetch requests.
+        </p>
+
+        <div className="mt-4 max-w-md">
+          <div className="relative">
+            <input
+              id="search-telemetry-input"
+              type="search"
+              aria-label="Search telemetry"
+              placeholder="Search by title or category..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text focus:outline-hidden"
+            />
+            {searchLoading ? (
+              <Loader2 size={16} className="absolute right-3 top-2.5 animate-spin text-muted" />
+            ) : null}
+          </div>
+          <span className="mt-1 block text-[11px] text-muted">
+            Aborted superseded requests: <strong className="font-mono text-text">{abortCount}</strong>
+          </span>
+        </div>
+
+        {searchResults.length > 0 ? (
+          <div className="mt-3 divide-y divide-border rounded-md border border-border">
+            {searchResults.map((item) => (
+              <div key={item.id} className="p-2 text-xs flex justify-between">
+                <span>{item.title}</span>
+                <span className="font-mono text-muted">{item.category}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {/* Section 6: Optimistic UI Updates with Rollback */}
+      <section className="rounded-lg border border-border bg-surface p-6 shadow-xs">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
+          <CheckCircle2 className="size-5 text-accent" />
+          <h2 className="text-xl font-semibold">6. Optimistic Updates with Rollback</h2>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          Adds item to the UI immediately. If backend returns an error (set status override to 500 above), the item rolls back with visual alert feedback.
         </p>
 
         <form onSubmit={handleAddOptimistic} className="mt-4 flex gap-2">
           <input
+            id="optimistic-title-input"
             type="text"
             aria-label="New item title"
-            placeholder="Add new operational item..."
+            placeholder="e.g. Distributed Trace Collector"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text focus:outline-hidden"
+            className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text"
           />
           <Button type="submit">Add Item Optimistically</Button>
         </form>
 
         {optimisticError ? (
-          <div role="alert" className="mt-3 rounded-md border border-danger/40 bg-danger-bg p-3 text-xs text-danger">
-            Rollback executed: {optimisticError}
+          <div role="alert" className="mt-3 rounded-md border border-danger/40 bg-danger/10 p-3 text-xs text-danger">
+            Rollback executed: mutation failed due to server error ({optimisticError})
           </div>
         ) : null}
 
-        <ul className="mt-4 space-y-2" data-testid="optimistic-list">
+        <div data-testid="optimistic-list" className="mt-4 divide-y divide-border rounded-md border border-border">
           {optimisticItems.map((item) => (
-            <li
-              key={item.id}
-              className={`flex items-center justify-between rounded-md border px-4 py-2 text-sm ${
-                item.pending ? "border-warning/50 bg-warning-bg/30 text-warning" : "border-border bg-surface text-text"
-              }`}
-            >
-              <span>{item.title}</span>
-              {item.pending ? (
-                <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-warning">
-                  <Loader2 size={12} className="animate-spin" /> Saving...
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-success">
-                  <CheckCircle2 size={12} /> Saved
-                </span>
-              )}
-            </li>
+            <div key={item.id} className="flex items-center justify-between p-3 text-sm">
+              <span className={item.pending ? "opacity-60 italic" : "font-medium"}>
+                {item.title}
+              </span>
+              <div className="flex items-center gap-2 text-xs">
+                {item.pending ? <Badge tone="warning">Pending Server...</Badge> : <Badge tone="neutral">Confirmed</Badge>}
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       </section>
 
-      {/* Section 5: Playwright Interception Target */}
+      {/* Section 7: Playwright Mock Interception Showcase */}
       <section className="rounded-lg border border-border bg-surface p-6 shadow-xs">
-        <h2 className="text-xl font-semibold">5. Network Mocking Target (<code className="font-mono text-sm">page.route</code>)</h2>
+        <div className="flex items-center gap-2 border-b border-border pb-3">
+          <ArrowUpDown className="size-5 text-accent" />
+          <h2 className="text-xl font-semibold">7. Playwright Mock Interception Showcase</h2>
+        </div>
         <p className="mt-1 text-xs text-muted">
-          Target route specifically designed for <code className="font-mono">page.route(&quot;/api/lab/network/**&quot;)</code> practicing <code className="font-mono">route.fulfill()</code> and <code className="font-mono">route.abort()</code>.
+          Demonstrates client-side testing using <code className="font-mono">page.route()</code>. The button below calls <code className="font-mono">/api/lab/network/interception-target</code>. In tests, intercept it with custom JSON.
         </p>
 
         <div className="mt-4 flex items-center gap-3">
-          <Button variant="ghost" onClick={handleInterceptionCall}>
-            Call Interception Target
-          </Button>
-          <div
-            role="status"
-            className="flex-1 rounded-md border border-border bg-surface-muted p-2.5 font-mono text-xs text-text"
-            data-testid="interception-output"
-          >
+          <Button onClick={handleInterceptionCall}>Call Interception Target</Button>
+          <span className="text-xs text-muted">Result:</span>
+          <code data-testid="interception-output" className="rounded bg-surface-muted px-2 py-1 font-mono text-xs">
             {interceptionResult}
-          </div>
+          </code>
         </div>
       </section>
     </div>

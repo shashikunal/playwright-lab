@@ -1,9 +1,10 @@
-import type { ActivityAction, ActivityItem, Course, CourseDetail, CourseModule, Enrollment, EnrollmentStatus, FileUploadResult, FlakyState, ManagedUser, NotificationPrefs, UserRole, UserStatus } from "@pil/shared";
+import type { ActivityAction, ActivityItem, Course, CourseDetail, CourseModule, Enrollment, EnrollmentStatus, FileUploadResult, FlakyState, ManagedUser, NotificationPrefs, StreamRecord, StreamResponse, UserRole, UserStatus } from "@pil/shared";
 
 export type ScenarioControls = {
   latencyMs: number;
   empty: boolean;
   statusOverride: number | null;
+  simulateTimeout: boolean;
 };
 
 export type IntakeRecord = {
@@ -76,7 +77,7 @@ let nextEnrollmentId = 103;
 const namespaces = new Map<string, NamespaceData>();
 
 export function defaultScenario(): ScenarioControls {
-  return { latencyMs: 0, empty: false, statusOverride: null };
+  return { latencyMs: 0, empty: false, statusOverride: null, simulateTimeout: false };
 }
 
 export function initStore(): void {
@@ -244,6 +245,52 @@ export function addUpload(filename: string, sizeBytes: number, mimeType: string)
 
 export function getUploads(): FileUploadResult[] {
   return uploadsStore;
+}
+
+// Bounded Retry Simulation
+let boundedRetryRemaining = 2; // Fails 2 times before success
+
+export function getBoundedRetryRemaining(): number {
+  return boundedRetryRemaining;
+}
+
+export function decrementBoundedRetry(): number {
+  if (boundedRetryRemaining > 0) {
+    boundedRetryRemaining--;
+  }
+  return boundedRetryRemaining;
+}
+
+export function resetBoundedRetry(count = 2): void {
+  boundedRetryRemaining = count;
+}
+
+// Infinite Stream Telemetry Records
+export const initialStreamRecords: StreamRecord[] = Array.from({ length: 25 }, (_, i) => ({
+  id: `str_${String(i + 1).padStart(3, "0")}`,
+  sequence: i + 1,
+  topic: ["telemetry", "security", "pipeline", "auth", "audit"][i % 5],
+  payload: `Telemetry ingestion event chunk #${i + 1} synchronized via high-assurance message bus`,
+  timestamp: new Date(Date.now() - (25 - i) * 60000).toISOString(),
+}));
+
+let streamStore: StreamRecord[] = [...initialStreamRecords];
+
+export function getStreamRecords(cursor?: string, limit = 5): StreamResponse {
+  const startIndex = cursor ? streamStore.findIndex((r) => r.id === cursor) + 1 : 0;
+  const safeStart = startIndex >= 0 ? startIndex : 0;
+  const items = streamStore.slice(safeStart, safeStart + limit);
+  const nextItem = streamStore[safeStart + limit];
+  return {
+    items,
+    nextCursor: nextItem ? nextItem.id : null,
+    hasMore: Boolean(nextItem),
+    total: streamStore.length,
+  };
+}
+
+export function resetStreamRecords(): void {
+  streamStore = [...initialStreamRecords];
 }
 
 // Phase 7: Managed Users Store

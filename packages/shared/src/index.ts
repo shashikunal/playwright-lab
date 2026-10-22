@@ -60,10 +60,29 @@ export type ScenarioListResponse = {
   scenarios: ScenarioSummary[];
 };
 
+export type HttpErrorStatus = 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500;
+
 export type ScenarioControlState = {
   latencyMs: number;
   empty: boolean;
   statusOverride: number | null;
+  simulateTimeout?: boolean;
+  failureCountdown?: number;
+};
+
+export type StreamRecord = {
+  id: string;
+  sequence: number;
+  topic: string;
+  payload: string;
+  timestamp: string;
+};
+
+export type StreamResponse = {
+  items: StreamRecord[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  total: number;
 };
 
 export type NetworkItem = {
