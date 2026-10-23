@@ -45,6 +45,53 @@ export type LessonSection = {
   content: string;
 };
 
+export type PracticeExercise = {
+  id: string;
+  title: string;
+  objective: string;
+  prerequisites: string[];
+  starterConfig: string;
+  task: string;
+  acceptanceCriteria: string[];
+  expectedBehavior: string;
+  hint: string;
+  solution: string;
+  troubleshootingNotes: string;
+  command: string;
+};
+
+export type ConfigPropertyExplanation = {
+  name: string;
+  type: string;
+  defaultValue: string;
+  description: string;
+  impact: string;
+};
+
+export type ConfigBehaviorComparison = {
+  aspect: string;
+  defaultBehavior: string;
+  customizedBehavior: string;
+};
+
+export type ConfigPlayground = {
+  title: string;
+  configExample: string;
+  properties: ConfigPropertyExplanation[];
+  behaviorComparison: ConfigBehaviorComparison[];
+  practiceTask: string;
+  localCommand: string;
+};
+
+export type KnowledgeCheckQuestion = {
+  id: string;
+  topic: string;
+  question: string;
+  options: string[];
+  correctOptionIndex: number;
+  explanation: string;
+};
+
 export type Lesson = {
   id: string;
   moduleSlug: string;
@@ -59,6 +106,9 @@ export type Lesson = {
   commonMistakes: CommonPitfall[];
   practiceTask: PracticeTask;
   interviewQuestions: InterviewQuestion[];
+  exercises?: PracticeExercise[];
+  playground?: ConfigPlayground;
+  knowledgeCheck?: KnowledgeCheckQuestion[];
 };
 
 export type CurriculumModule = {

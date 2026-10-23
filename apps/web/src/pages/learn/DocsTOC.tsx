@@ -20,6 +20,9 @@ export function DocsTOC({ lesson }: DocsTOCProps) {
     ...lesson.sections.map((sec) => ({ id: sec.id, label: sec.title })),
     ...(lesson.codeExamples.length > 0 ? [{ id: "code-examples", label: "TypeScript Implementation" }] : []),
     ...(lesson.commonMistakes.length > 0 ? [{ id: "common-pitfalls", label: "Pitfalls & Anti-Patterns" }] : []),
+    ...(lesson.playground ? [{ id: "config-playground", label: "Configuration Playground" }] : []),
+    ...(lesson.exercises && lesson.exercises.length > 0 ? [{ id: "hands-on-exercises", label: "8 Configuration Exercises" }] : []),
+    ...(lesson.knowledgeCheck && lesson.knowledgeCheck.length > 0 ? [{ id: "knowledge-check", label: "Knowledge Check Quiz" }] : []),
     { id: "hands-on-practice", label: "Hands-On Practice Task" },
     ...(lesson.interviewQuestions.length > 0 ? [{ id: "interview-qa", label: "Senior SDET Interview Q&A" }] : []),
   ], [lesson]);

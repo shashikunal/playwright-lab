@@ -20,9 +20,12 @@ import {
 } from "../../data/learningPath/curriculum";
 import type { Lesson, LessonDifficulty } from "../../data/learningPath/types";
 import { CodeBlock } from "./CodeBlock";
+import { ConfigPlaygroundSection } from "./ConfigPlaygroundSection";
 import { DocsBreadcrumbs } from "./DocsBreadcrumbs";
 import { DocsSidebar } from "./DocsSidebar";
 import { DocsTOC } from "./DocsTOC";
+import { ExercisesSection } from "./ExercisesSection";
+import { KnowledgeCheckSection } from "./KnowledgeCheckSection";
 import { PracticeTaskCard } from "./PracticeTaskCard";
 import { useDocsProgress } from "./useDocsProgress";
 
@@ -330,6 +333,21 @@ export function PlaywrightDocs() {
                 ))}
               </div>
             </section>
+          )}
+
+          {/* Section: Dedicated Configuration Playground (if present) */}
+          {currentLesson.playground && (
+            <ConfigPlaygroundSection playground={currentLesson.playground} />
+          )}
+
+          {/* Section: 8 Practical Configuration Exercises (if present) */}
+          {currentLesson.exercises && currentLesson.exercises.length > 0 && (
+            <ExercisesSection exercises={currentLesson.exercises} />
+          )}
+
+          {/* Section: Interactive Knowledge Check Assessment (if present) */}
+          {currentLesson.knowledgeCheck && currentLesson.knowledgeCheck.length > 0 && (
+            <KnowledgeCheckSection questions={currentLesson.knowledgeCheck} />
           )}
 
           {/* Section: Hands-on Practice Task */}

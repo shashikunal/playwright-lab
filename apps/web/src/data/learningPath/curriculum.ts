@@ -314,108 +314,848 @@ Diagnostic Interpretation:
         id: "configuration-and-browsers",
         moduleSlug: "getting-started",
         moduleTitle: "Foundation & Test Architecture",
-        title: "Configuration Matrix, Projects & CI Reporters",
+        title: "Understanding playwright.config.ts — Beginner to Advanced",
         difficulty: "Intermediate",
-        durationMinutes: 20,
-        prerequisites: ["playwright-introduction"],
-        summary: "Configure multi-browser execution across Chromium, Firefox, WebKit, and Mobile Chrome devices with retries, workers, and trace capture.",
+        durationMinutes: 30,
+        prerequisites: [
+          "playwright-introduction",
+          "Node.js 18+ LTS runtime installed",
+          "Basic TypeScript & CLI understanding"
+        ],
+        summary: "Master Playwright's configuration architecture from testDir and timeout settings to multi-project browser matrices, mobile device emulation, CI/CD worker optimization, trace recording strategies, and webServer orchestration.",
         sections: [
           {
-            id: "configuration-deep-dive",
-            title: "Multi-Project Matrix",
-            content: "Playwright configuration allows defining multiple browser profiles under `projects`. Each project can configure custom viewport resolutions, device descriptors (`devices['Pixel 7']`), geolocation, permissions, and dependencies like authentication setup routines."
+            id: "config-foundations",
+            title: "Part A — Configuration Foundations",
+            content: `The 'playwright.config.ts' file is the central nervous system of any professional Playwright test suite. It governs how test files are discovered, which browser binaries execute them, how worker threads are orchestrated, and how diagnostic artifacts are generated.
+
+Why Playwright Uses playwright.config.ts:
+In raw automation, configurations are often scattered across test scripts or environment variables. Playwright unifies test suite infrastructure into a single, type-safe TypeScript configuration file. Wrapping the export in 'defineConfig()' provides instant IDE autocompletion, type validation, and compile-time detection of deprecated or misspelled properties.
+
+Configuration File Discovery:
+When you execute 'npx playwright test', Playwright automatically searches for a configuration file in the following order:
+1. An explicit configuration path specified via the CLI flag: 'npx playwright test --config=my-custom.config.ts' (or '-c my-custom.config.ts').
+2. In the current working directory, searching for 'playwright.config.ts', 'playwright.config.js', or 'playwright.config.mjs'.
+3. Ascending up parent directories until a configuration file is encountered.
+
+Configuration vs. Test Code:
+It is crucial to distinguish configuration settings from test code:
+- Configuration is declarative and environment-level. It specifies global defaults: test directories, baseURL, browser viewports, default timeouts, and reporting strategies.
+- Test code is imperative and scenario-specific. It exercises user workflows using locators and assertions. Tests should never hardcode environment URLs or arbitrary delays; they should rely on the configuration to provide environment context.`
           },
           {
-            id: "trace-recording-policies",
-            title: "Trace & Video Capture Strategy",
-            content: "Running tests with `trace: 'retain-on-failure'` generates comprehensive `.zip` archives containing full DOM snapshots, network payloads, console logs, and action timings only when a test fails, preventing storage bloat on CI systems."
+            id: "essential-options",
+            title: "Part B — Essential Configuration Options",
+            content: `A resilient configuration relies on core options that control test discovery, execution parallelism, and timeout thresholds:
+
+- testDir:
+  Specifies the directory root where Playwright discovers test files (e.g. './e2e'). By default, it scans the directory where the config resides. Constraining 'testDir' avoids scanning build directories or server routes.
+
+- testMatch and testIgnore:
+  Glob patterns or regular expressions that filter files. Default: '.*(test|spec)\\.(ts|js|mjs)'. Use 'testIgnore' to exclude setup helpers, e.g. 'testIgnore: /.*\\.setup\\.ts/'.
+
+- timeout and expect.timeout:
+  Playwright operates with two distinct timeout levels:
+  1. 'timeout' (Default: 30,000ms): The overall maximum duration allowed for an entire test case (including before/after hooks). If exceeded, the test fails with a Test Timeout error.
+  2. 'expect.timeout' (Default: 5,000ms): The maximum duration allowed for a single Web-First assertion to poll the DOM before failing. Keeping this at 5s ensures rapid failure on missing elements without delaying the suite.
+
+- fullyParallel:
+  When true, Playwright runs tests inside individual files concurrently across worker processes. When false, files run in parallel, but tests within the same file execute sequentially. Set to true for stateless tests; disable only for files requiring strict serial order.
+
+- forbidOnly:
+  Prevents accidental commits of 'test.only()'. Recommended setting: 'forbidOnly: !!process.env.CI'. This immediately fails CI builds if developer debug filters were left in the repository.
+
+- retries:
+  Defines how many times a failed test is automatically re-run. Recommended: 'retries: process.env.CI ? 2 : 0'. Crucial rule: retries are an insurance policy for CI network blips, NOT an excuse to ignore flaky tests.
+
+- workers:
+  The maximum number of concurrent Node.js worker OS processes. Default locally: 50% of available CPU cores. On CI runners, set explicitly (e.g. 'workers: process.env.CI ? 2 : undefined') to prevent CPU throttling and memory exhaustion.
+
+- reporter and outputDir:
+  'reporter' configures console and file output formats (e.g. [['list'], ['html', { open: 'never' }]]). 'outputDir' defines where failure screenshots, videos, and trace archives are deposited (default: 'test-results/').`
+          },
+          {
+            id: "browser-execution-config",
+            title: "Part C — Browser & Context Execution Options (use Block)",
+            content: `The 'use' object sets default options for all browser instances, contexts, and pages. It is vital to distinguish test-runner settings from browser-context settings:
+
+Test-Runner Settings vs Browser-Context Settings:
+- Test-runner settings (such as workers, retries, and testDir) control the Node.js execution environment.
+- Browser-context settings (inside 'use') control the browser window, networking, and browser state.
+
+Core 'use' Properties:
+- baseURL:
+  The fundamental anchor URL (e.g. 'http://127.0.0.1:5173'). When configured, 'await page.goto("/practice/login")' automatically prefixes the baseURL. Eliminates hardcoded localhost addresses.
+
+- headless:
+  Controls whether browser windows open visibly (headless: false) or run in the background (headless: true). By default, Playwright runs headless in CLI mode and headed in '--ui' or '--headed' mode.
+
+- actionTimeout and navigationTimeout:
+  1. 'actionTimeout' (Default: 0 = test timeout): Maximum time an action like 'click()' or 'fill()' will wait for element actionability checks (visible, stable, enabled). Recommended: 10,000ms.
+  2. 'navigationTimeout' (Default: 0 = test timeout): Maximum time 'page.goto()' waits for page load. Recommended: 15,000ms.
+
+- trace, screenshot, and video:
+  Artifact recording policies:
+  - 'trace: "retain-on-failure"': Preserves complete DOM, network, and timeline traces ONLY when a test fails. Recommended for CI to optimize disk space.
+  - 'screenshot: "only-on-failure"': Takes a full-viewport screenshot on failure.
+  - 'video: "retain-on-failure"': Records video and retains only for failing executions.
+
+- ignoreHTTPSErrors:
+  Bypasses SSL/TLS certificate warnings for self-signed certificates in local staging. SECURITY WARNING: Never enable this blindly in production suites, as it conceals legitimate HTTPS certificate expiration or configuration defects.`
+          },
+          {
+            id: "projects-and-environments",
+            title: "Part D — Projects, Emulation & Environments",
+            content: `Playwright's 'projects' array enables multi-browser matrix testing and cross-device emulation from a single test codebase:
+
+Multi-Browser Projects:
+A project defines a logical execution profile:
+- Chromium: 'use: { ...devices["Desktop Chrome"] }'
+- Firefox: 'use: { ...devices["Desktop Firefox"] }'
+- WebKit: 'use: { ...devices["Desktop Safari"] }'
+
+Desktop vs. Mobile Emulation:
+Using Playwright's built-in 'devices' registry (e.g. 'devices["Pixel 7"]' or 'devices["iPhone 14"]'), Playwright automatically configures screen viewport, device scale factor, user agent string, touch event support, and mobile browser flags without needing physical devices or emulators.
+
+Local vs. CI Environment Branching:
+Use standard Node.js environment variables to adjust settings cleanly:
+const isCI = !!process.env.CI;
+In CI: Enable 'forbidOnly', set retries to 1 or 2, set workers to 2, and use 'github' or 'blob' reporters. Locally: Enable interactive reporters, disable retries, and allow 50% CPU worker allocation.
+
+webServer Orchestration:
+Playwright can launch and monitor local dev servers before running tests:
+webServer: {
+  command: "npm run dev",
+  url: "http://127.0.0.1:5173",
+  reuseExistingServer: !process.env.CI,
+  timeout: 120_000,
+}
+- 'url': Playwright polls this URL until receiving HTTP 200 before starting tests.
+- 'reuseExistingServer': When true locally, Playwright detects an already-running server and avoids restarting it. On CI, setting to false guarantees a pristine server instance.`
+          },
+          {
+            id: "advanced-configuration",
+            title: "Part E — Advanced Architecture & Reliability Trade-offs",
+            content: `Senior SDETs architect Playwright configurations for scalability, deterministic test data, and fast CI feedback loops:
+
+Configuration Inheritance & Overrides:
+Options defined at the root 'use' block serve as shared defaults. Any project inside 'projects' can selectively override individual properties (such as custom viewport, permissions, or geolocation) while inheriting the remaining root settings.
+
+Authentication Setup Projects (Project Dependencies):
+Instead of logging in before every test, define a setup project:
+{ name: "setup", testMatch: /.*\\.setup\\.ts/ }
+Subsequent browser projects declare 'dependencies: ["setup"]'. Playwright executes the setup project first, stores the authenticated session state in a JSON file, and browser projects load it via 'storageState: "playwright/.auth/user.json"'.
+
+Reporter Configurations:
+Playwright supports multiple concurrent reporters:
+- 'list': Clean terminal output during local development.
+- 'html': Interactive browser dashboard with search, trace viewer links, and video playback.
+- 'blob': Lightweight artifact bundles designed for sharded CI runs, merged into a single report via 'npx playwright merge-reports'.
+
+Configuration Debugging:
+When tests fail unexpectedly to discover files or timeout immediately, inspect:
+1. Is 'baseURL' matching the exact port where the dev server is listening?
+2. Are 'actionTimeout' and 'navigationTimeout' shorter than overall 'timeout'?
+3. Is 'testMatch' accidentally filtering out valid spec files?`
           }
         ],
         codeExamples: [
           {
-            id: "config-example",
-            caption: "Industrial Playwright Configuration (playwright.config.ts)",
+            id: "production-config",
+            caption: "Production Playwright Configuration (playwright.config.ts)",
             language: "typescript",
             code: `import { defineConfig, devices } from "@playwright/test";
+
+const isCI = !!process.env.CI;
 
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : undefined,
-  reporter: [["list"], ["html", { open: "never" }]],
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 2 : undefined,
+  timeout: 30_000,
+  expect: {
+    timeout: 5_000,
+  },
+  reporter: [
+    ["list"],
+    ["html", { open: "never" }],
+  ],
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: process.env.BASE_URL || "http://127.0.0.1:5173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    actionTimeout: 10_000,
+    navigationTimeout: 15_000,
   },
   projects: [
-    { name: "setup", testMatch: /.*\\.setup\\.ts/ },
+    {
+      name: "setup",
+      testMatch: /.*\\.setup\\.ts/,
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
       dependencies: ["setup"],
+      testIgnore: /.*\\.setup\\.ts/,
     },
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
       dependencies: ["setup"],
+      testIgnore: /.*\\.setup\\.ts/,
     },
     {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
+      name: "mobile-chrome",
+      use: { ...devices["Pixel 7"] },
       dependencies: ["setup"],
+      testMatch: /responsive\\.spec\\.ts|smoke\\.spec\\.ts/,
     },
   ],
+  webServer: {
+    command: "npm run dev",
+    url: "http://127.0.0.1:5173",
+    reuseExistingServer: !isCI,
+    timeout: 120_000,
+  },
 });`,
             lineExplanations: [
-              { line: 5, explanation: "fullyParallel runs tests in all files concurrently across worker processes." },
-              { line: 6, explanation: "Flaky test retry policy: automatically retries up to 2 times on CI." },
-              { line: 11, explanation: "trace: retain-on-failure preserves traces only when tests fail to optimize disk space." },
-              { line: 17, explanation: "Defines the global setup dependency that generates reusable auth storage states." }
+              { line: 3, explanation: "Detects whether tests are running in a CI environment (GitHub Actions, GitLab CI)." },
+              { line: 6, explanation: "testDir: limits test file discovery strictly to the ./e2e directory." },
+              { line: 7, explanation: "fullyParallel: enables intra-file parallel test execution across worker processes." },
+              { line: 8, explanation: "forbidOnly: prevents test.only() from passing in CI, ensuring full suite execution." },
+              { line: 9, explanation: "retries: retries failed tests twice on CI to absorb network transient blips." },
+              { line: 10, explanation: "workers: constrains CI workers to 2 to prevent runner CPU throttling." },
+              { line: 18, explanation: "use.baseURL: eliminates hardcoded URLs; page.goto('/login') prepends this address." },
+              { line: 19, explanation: "trace: retain-on-failure creates debug zip files only when a test fails." },
+              { line: 26, explanation: "setup project: executes authentication routines first to store reusable cookies." },
+              { line: 31, explanation: "dependencies: ensures chromium tests wait for the setup project to finish." },
+              { line: 43, explanation: "webServer: automatically boots the local app before tests and checks the health URL." }
             ]
           }
         ],
         commonMistakes: [
           {
-            title: "Enabling trace: 'on' globally in large test suites",
-            badPractice: `use: { trace: 'on', video: 'on' }`,
-            goodPractice: `use: { trace: 'retain-on-failure', video: 'retain-on-failure' }`,
-            explanation: "Unconditionally recording traces and videos for hundreds of passing tests slows down execution by 40% and exhausts CI runner disk space."
+            title: "Masking flaky tests with excessive global retries",
+            badPractice: `retries: 5`,
+            goodPractice: `retries: process.env.CI ? 1 : 0`,
+            explanation: "Setting high retry counts masks root causes such as race conditions and shared database state. Retries should only protect against infrastructure flakiness in CI; local development should fail immediately (retries: 0) to highlight bugs."
+          },
+          {
+            title: "Hardcoding localhost URLs in test files instead of baseURL",
+            badPractice: `await page.goto("http://localhost:5173/practice/login");`,
+            goodPractice: `await page.goto("/practice/login"); // resolves against config baseURL`,
+            explanation: "Hardcoding localhost breaks execution across CI pipelines, Docker containers, and staging preview URLs. Always configure baseURL in playwright.config.ts."
+          },
+          {
+            title: "Unconditionally recording traces and videos for passing tests",
+            badPractice: `use: { trace: "on", video: "on" }`,
+            goodPractice: `use: { trace: "retain-on-failure", video: "retain-on-failure" }`,
+            explanation: "Recording full traces and video on hundreds of passing tests increases execution time by 30-50% and consumes gigabytes of CI runner disk space. Use 'retain-on-failure' to capture artifacts only when needed."
+          },
+          {
+            title: "Setting actionTimeout equal to or higher than overall test timeout",
+            badPractice: `timeout: 10_000, use: { actionTimeout: 15_000 }`,
+            goodPractice: `timeout: 30_000, use: { actionTimeout: 10_000 }`,
+            explanation: "If actionTimeout exceeds overall test timeout, a stuck click action will trigger an opaque Test Timeout error rather than an actionable Action Timeout with locator diagnostics."
+          }
+        ],
+        playground: {
+          title: "Configuration Architecture Playground",
+          configExample: `import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./e2e",
+  fullyParallel: true,
+  retries: 1,
+  workers: 2,
+  reporter: [["list"], ["html", { open: "never" }]],
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+    actionTimeout: 10_000,
+    navigationTimeout: 15_000,
+    trace: "retain-on-failure",
+  },
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+  ],
+});`,
+          properties: [
+            {
+              name: "testDir",
+              type: "string",
+              defaultValue: "'.' (current directory)",
+              description: "Root directory scanned for test spec files.",
+              impact: "Prevents scanning node_modules or application build output."
+            },
+            {
+              name: "baseURL",
+              type: "string",
+              defaultValue: "undefined",
+              description: "Base URL prepended to relative page.goto() navigation calls.",
+              impact: "Enables environment portability across local, staging, and CI."
+            },
+            {
+              name: "fullyParallel",
+              type: "boolean",
+              defaultValue: "false",
+              description: "Controls whether tests inside the same file run concurrently.",
+              impact: "Cuts execution duration by up to 60% for stateless test suites."
+            },
+            {
+              name: "timeout",
+              type: "number",
+              defaultValue: "30,000 ms",
+              description: "Maximum execution time for an entire test case.",
+              impact: "Hard safety ceiling preventing runaway hangs on network stalls."
+            },
+            {
+              name: "expect.timeout",
+              type: "number",
+              defaultValue: "5,000 ms",
+              description: "Maximum duration for Web-First auto-retrying assertions.",
+              impact: "Ensures responsive assertions without masking absent DOM elements."
+            },
+            {
+              name: "actionTimeout",
+              type: "number",
+              defaultValue: "0 (unlimited)",
+              description: "Maximum wait time for user actions (click, fill, hover).",
+              impact: "Fails fast with detailed actionability logs if element is disabled."
+            },
+            {
+              name: "retries",
+              type: "number",
+              defaultValue: "0",
+              description: "Number of times a failing test will be re-executed.",
+              impact: "Absorbs network transient spikes on CI without masking real bugs."
+            },
+            {
+              name: "webServer",
+              type: "object | object[]",
+              defaultValue: "undefined",
+              description: "Command and health check URL to boot local application.",
+              impact: "Guarantees tests run against a live application automatically."
+            }
+          ],
+          behaviorComparison: [
+            {
+              aspect: "Test Execution Parallelism",
+              defaultBehavior: "Files run in parallel, but tests within each file execute sequentially one by one.",
+              customizedBehavior: "fullyParallel: true runs tests in all files concurrently across multi-core worker processes."
+            },
+            {
+              aspect: "Navigation Addressing",
+              defaultBehavior: "Requires hardcoded absolute URLs: page.goto('http://localhost:5173/practice/login').",
+              customizedBehavior: "baseURL config allows relative navigation: page.goto('/practice/login') across any host."
+            },
+            {
+              aspect: "Debug Artifact Capture",
+              defaultBehavior: "Traces and videos are disabled by default; failing CI tests provide only terminal error logs.",
+              customizedBehavior: "trace: 'retain-on-failure' automatically captures DOM snapshots and network logs on failure."
+            },
+            {
+              aspect: "Flaky Test Re-runs",
+              defaultBehavior: "0 retries: any momentary network hiccup fails the entire CI build immediately.",
+              customizedBehavior: "retries: 2 automatically re-runs failing tests, generating on-first-retry diagnostic traces."
+            },
+            {
+              aspect: "CI Safety Controls",
+              defaultBehavior: "Accidentally committed test.only() passes silently and skips 99% of your test suite.",
+              customizedBehavior: "forbidOnly: !!process.env.CI halts the build immediately if test.only is committed."
+            }
+          ],
+          practiceTask: "Execute our project's verified practice configuration to see relative path resolution and actionTimeout in action.",
+          localCommand: "npx playwright test --config=e2e/practice-configs/exercise1-testdir.config.ts"
+        },
+        exercises: [
+          {
+            id: "ex1-testdir",
+            title: "Exercise 1: Configure testDir and Discover Test Files",
+            objective: "Configure the testDir and testMatch properties to isolate test discovery to a specific directory.",
+            prerequisites: ["Playwright installed", "Test file at e2e/practice-configs.spec.ts"],
+            starterConfig: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  // TODO: Set testDir to target the e2e folder
+  // TODO: Set testMatch to only execute practice-configs.spec.ts
+});`,
+            task: "Create a configuration file that sets testDir to '../' and filters specifically for practice-configs.spec.ts.",
+            acceptanceCriteria: [
+              "Config specifies testDir pointing to the e2e root.",
+              "testMatch filters for /practice-configs\\.spec\\.ts/.",
+              "Running with --config discovers exactly 2 tests."
+            ],
+            expectedBehavior: "Playwright discovers only practice-configs.spec.ts, ignoring all other spec files in the directory.",
+            hint: "Use testDir: '../' and testMatch: /practice-configs\\.spec\\.ts/.",
+            solution: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+  },
+});`,
+            troubleshootingNotes: "If Playwright discovers 0 tests, verify that testDir relative path correctly resolves to the folder containing your spec file.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise1-testdir.config.ts"
+          },
+          {
+            id: "ex2-baseurl",
+            title: "Exercise 2: Configure baseURL for Relative Navigation",
+            objective: "Set up baseURL in the use block to enable clean, environment-portable navigation.",
+            prerequisites: ["Local application running on port 5173"],
+            starterConfig: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  use: {
+    // TODO: Add baseURL pointing to http://127.0.0.1:5173
+  },
+});`,
+            task: "Define baseURL under the use block so that await page.goto('/practice/login') automatically navigates to port 5173.",
+            acceptanceCriteria: [
+              "use.baseURL is configured to 'http://127.0.0.1:5173'.",
+              "Tests in practice-configs.spec.ts navigate using relative URL '/practice/login'.",
+              "Navigation succeeds without error."
+            ],
+            expectedBehavior: "Playwright prepends baseURL to relative paths; tests execute against the local web application without hardcoded hostnames.",
+            hint: "Add baseURL: 'http://127.0.0.1:5173' inside the use: { ... } block.",
+            solution: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+    actionTimeout: 10_000,
+  },
+});`,
+            troubleshootingNotes: "Always use '127.0.0.1' instead of 'localhost' on Windows to avoid IPv6 vs IPv4 loopback resolution latency.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise2-baseurl.config.ts"
+          },
+          {
+            id: "ex3-timeout",
+            title: "Exercise 3: Configure Test & Assertion Timeouts",
+            objective: "Distinguish overall test timeout from expect.timeout and configure both for fast, predictable failure feedback.",
+            prerequisites: ["Understanding of synchronous vs asynchronous timeouts"],
+            starterConfig: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  // TODO: Set overall test timeout to 15,000ms
+  // TODO: Set expect assertion timeout to 4,000ms
+});`,
+            task: "Configure overall timeout to 15,000ms and assertion expect.timeout to 4,000ms.",
+            acceptanceCriteria: [
+              "timeout is set to 15_000.",
+              "expect.timeout is set to 4_000.",
+              "Tests pass within the specified timeout limits."
+            ],
+            expectedBehavior: "Playwright enforces a 4s ceiling on individual DOM assertions and a 15s ceiling on the entire test function.",
+            hint: "Use timeout: 15_000 at the root and expect: { timeout: 4_000 }.",
+            solution: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  timeout: 15_000,
+  expect: {
+    timeout: 4_000,
+  },
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+  },
+});`,
+            troubleshootingNotes: "Never set expect.timeout higher than the overall test timeout, as the test will terminate prematurely before the assertion finishes.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise3-timeout.config.ts"
+          },
+          {
+            id: "ex4-retries",
+            title: "Exercise 4: Configure Retries & Trace Retention",
+            objective: "Configure test retry policies and attach traces on retry to diagnose intermittent failures.",
+            prerequisites: ["Understanding of retry mechanisms"],
+            starterConfig: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  // TODO: Set retries to 2
+  // TODO: Configure trace to 'on-first-retry'
+});`,
+            task: "Configure retries to 2 and enable trace capture with 'on-first-retry'.",
+            acceptanceCriteria: [
+              "retries is set to 2.",
+              "use.trace is set to 'on-first-retry'.",
+              "use.screenshot is set to 'only-on-failure'."
+            ],
+            expectedBehavior: "Passing tests do not record traces; if a test fails, Playwright re-runs it and saves a trace.zip file for debugging.",
+            hint: "Set retries: 2 and use: { trace: 'on-first-retry', screenshot: 'only-on-failure' }.",
+            solution: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  retries: 2,
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+  },
+});`,
+            troubleshootingNotes: "Do not use retries as a band-aid for flawed assertions or race conditions. All retried tests should be investigated in CI logs.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise4-retries.config.ts"
+          },
+          {
+            id: "ex5-reporter",
+            title: "Exercise 5: Configure HTML & Terminal Reporters",
+            objective: "Set up multi-reporter output combining terminal list view with interactive HTML reports.",
+            prerequisites: ["npm test execution environment"],
+            starterConfig: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  // TODO: Configure reporter with 'list' and 'html'
+});`,
+            task: "Configure an array of reporters with 'list' for terminal output and 'html' with open: 'never'.",
+            acceptanceCriteria: [
+              "reporter contains both ['list'] and ['html', { open: 'never' }].",
+              "HTML report is generated in the output directory after test completion."
+            ],
+            expectedBehavior: "Playwright prints real-time test progress in the terminal and generates an interactive HTML dashboard in playwright-report/.",
+            hint: "Use reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-practice' }]].",
+            solution: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: "playwright-report-practice" }],
+  ],
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+  },
+});`,
+            troubleshootingNotes: "Always set open: 'never' on CI or headless environments to prevent Playwright from attempting to open a graphical browser window on exit.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise5-reporter.config.ts"
+          },
+          {
+            id: "ex6-projects",
+            title: "Exercise 6: Configure Chromium & Firefox Projects",
+            objective: "Define multi-browser projects in the configuration file to run identical test suites across different rendering engines.",
+            prerequisites: ["Chromium and Firefox browser binaries installed"],
+            starterConfig: `import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  // TODO: Configure projects array with chromium and firefox
+});`,
+            task: "Configure projects array with 'chromium' using Desktop Chrome and 'firefox' using Desktop Firefox.",
+            acceptanceCriteria: [
+              "projects array defines a 'chromium' project with devices['Desktop Chrome'].",
+              "projects array defines a 'firefox' project with devices['Desktop Firefox'].",
+              "Tests run across both browser projects."
+            ],
+            expectedBehavior: "Playwright allocates workers across Chromium and Firefox, executing the spec file against both engines.",
+            hint: "Use projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }, { name: 'firefox', use: { ...devices['Desktop Firefox'] } }].",
+            solution: `import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
+    },
+  ],
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+  },
+});`,
+            troubleshootingNotes: "If Firefox is not installed locally, run 'npx playwright install firefox' to download the engine binary.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise6-projects.config.ts --project=chromium"
+          },
+          {
+            id: "ex7-webserver",
+            title: "Exercise 7: Configure webServer for Local Boot & Reuse",
+            objective: "Configure webServer to verify that the local web application is active before starting tests.",
+            prerequisites: ["Local application script defined in package.json"],
+            starterConfig: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  // TODO: Configure webServer to check http://127.0.0.1:5173
+});`,
+            task: "Define a webServer configuration with command 'npm run dev -w @pil/web', url 'http://127.0.0.1:5173', and reuseExistingServer: true.",
+            acceptanceCriteria: [
+              "webServer block defines command, url, and timeout.",
+              "reuseExistingServer is set to true.",
+              "Playwright detects running server and runs tests immediately."
+            ],
+            expectedBehavior: "Playwright checks the URL. If the server is already active, it reuses it without restarting; if inactive, it starts the dev command automatically.",
+            hint: "Set reuseExistingServer: true so running dev servers are reused without port collisions.",
+            solution: `import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+  },
+  webServer: {
+    command: "npm run dev -w @pil/web",
+    url: "http://127.0.0.1:5173",
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
+});`,
+            troubleshootingNotes: "Always specify the 'url' property in webServer so Playwright waits for HTTP 200 rather than guessing with arbitrary sleep delays.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise7-webserver.config.ts"
+          },
+          {
+            id: "ex8-ci",
+            title: "Exercise 8: Compare Local & CI Configuration Safely",
+            objective: "Implement safe environment branching that toggles retries, workers, and forbidOnly based on process.env.CI.",
+            prerequisites: ["Node.js process.env familiarity"],
+            starterConfig: `import { defineConfig } from "@playwright/test";
+
+const isCI = !!process.env.CI;
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  // TODO: Branch forbidOnly, retries, and workers based on isCI
+});`,
+            task: "Construct a configuration that enables forbidOnly, 2 retries, and 2 workers on CI, while running 0 retries and full local CPU cores locally.",
+            acceptanceCriteria: [
+              "forbidOnly is enabled only when isCI is true.",
+              "retries is set to 2 in CI and 0 locally.",
+              "workers is set to 2 in CI and undefined locally.",
+              "trace is set to retain-on-failure in CI."
+            ],
+            expectedBehavior: "Locally, tests fail fast without retries; in CI, tests retry transient errors and prevent runaway worker memory bloat.",
+            hint: "Use const isCI = !!process.env.CI; and ternary expressions for retries, workers, and forbidOnly.",
+            solution: `import { defineConfig } from "@playwright/test";
+
+const isCI = !!process.env.CI;
+
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  fullyParallel: true,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 2 : undefined,
+  reporter: isCI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  use: {
+    baseURL: process.env.BASE_URL || "http://127.0.0.1:5173",
+    trace: isCI ? "retain-on-failure" : "on-first-retry",
+    video: isCI ? "retain-on-failure" : "off",
+  },
+});`,
+            troubleshootingNotes: "Do not hardcode secrets or production tokens in environment branching; read them from process.env with secure fallback defaults.",
+            command: "npx playwright test --config=e2e/practice-configs/exercise8-ci.config.ts"
+          }
+        ],
+        knowledgeCheck: [
+          {
+            id: "kc-discovery",
+            topic: "Configuration Discovery",
+            question: "How does Playwright locate the configuration file when no explicit '--config' flag is passed?",
+            options: [
+              "It searches only in the root directory for a file named 'config.json'.",
+              "It searches the current working directory for 'playwright.config.(ts|js|mjs)' and traverses upwards to parent directories.",
+              "It downloads the configuration dynamically from the remote repository.",
+              "It scans all folders for files ending with '.playwright.ts'."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Playwright looks for 'playwright.config.ts', 'playwright.config.js', or 'playwright.config.mjs' in the current working directory, and ascends upwards through parent directories until it encounters the configuration file."
+          },
+          {
+            id: "kc-timeouts",
+            topic: "Timeouts Architecture",
+            question: "What is the difference between root 'timeout' and 'expect.timeout' in playwright.config.ts?",
+            options: [
+              "'timeout' governs individual locator clicks, while 'expect.timeout' governs network latency.",
+              "'timeout' (default 30s) limits the total duration of the entire test function, while 'expect.timeout' (default 5s) limits how long Web-First assertions poll the live DOM.",
+              "'expect.timeout' must always be larger than the root 'timeout'.",
+              "There is no difference; they are interchangeable aliases."
+            ],
+            correctOptionIndex: 1,
+            explanation: "The root 'timeout' represents the overall test case lifecycle ceiling (including hooks), while 'expect.timeout' controls the auto-retrying polling window for individual assertions (e.g. toBeVisible)."
+          },
+          {
+            id: "kc-workers-retries",
+            topic: "Workers and Retries",
+            question: "Why should retries be set to 0 in local development and restricted to 1 or 2 in CI?",
+            options: [
+              "Because retries consume too much electricity on laptops.",
+              "Because local developers need immediate failure feedback to fix bugs, while CI retries absorb transient network infrastructure hiccups without masking flakiness.",
+              "Because Playwright disables screenshots when retries are enabled.",
+              "Because retries can only be executed on Linux operating systems."
+            ],
+            correctOptionIndex: 1,
+            explanation: "In local development, retries waste time and conceal race conditions. Failing immediately allows developers to fix the root cause. In CI, a single retry absorbs external network jitter, but persistent flakiness must still be investigated."
+          },
+          {
+            id: "kc-projects",
+            topic: "Projects Matrix",
+            question: "What is the primary benefit of declaring an authentication setup project under 'projects' with 'dependencies'?",
+            options: [
+              "It bypasses Playwright's strict mode checks.",
+              "It generates a reusable authenticated storageState once, allowing subsequent browser projects to execute in parallel without repeating UI logins.",
+              "It automatically installs browser binaries if they are missing.",
+              "It forces all tests to run sequentially on a single thread."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Setup projects execute before dependent projects, authenticating a user and serializing cookies/localStorage to disk. Dependent browser projects simply load the storageState, saving thousands of seconds across test suites."
+          },
+          {
+            id: "kc-context-options",
+            topic: "Browser Context Options",
+            question: "Which of the following is a Browser Context setting (configured inside 'use') rather than a Test Runner setting?",
+            options: [
+              "workers",
+              "testDir",
+              "viewport",
+              "forbidOnly"
+            ],
+            correctOptionIndex: 2,
+            explanation: "'viewport' configures the browser window dimensions inside the browser context. In contrast, 'workers', 'testDir', and 'forbidOnly' are test runner orchestration settings."
+          },
+          {
+            id: "kc-reporters",
+            topic: "Reporters",
+            question: "Why is 'html' reporter configured with '{ open: \"never\" }' in automated CI pipelines?",
+            options: [
+              "Because HTML reports cannot be viewed on Linux.",
+              "To prevent Playwright from trying to launch an interactive browser window on headless CI servers, which causes process hangs.",
+              "Because HTML reports consume double the CPU memory.",
+              "To encrypt the test results."
+            ],
+            correctOptionIndex: 1,
+            explanation: "In headless CI environments, attempting to open a browser window on test completion hangs the runner. Setting 'open: \"never\"' writes the static report files silently to disk for CI artifact upload."
+          },
+          {
+            id: "kc-baseurl",
+            topic: "baseURL",
+            question: "When 'baseURL: \"http://127.0.0.1:5173\"' is configured, what does 'await page.goto(\"/practice/login\")' do?",
+            options: [
+              "It throws an invalid URL error because the protocol is missing.",
+              "It resolves the relative path against baseURL, navigating directly to 'http://127.0.0.1:5173/practice/login'.",
+              "It searches Google for the keyword '/practice/login'.",
+              "It opens a blank tab and waits for manual user input."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Playwright automatically prepends the configured baseURL to any relative path passed to 'page.goto()' or 'request' fixtures, making tests completely independent of specific hostnames or ports."
+          },
+          {
+            id: "kc-webserver",
+            topic: "webServer",
+            question: "Why is 'reuseExistingServer: !process.env.CI' recommended in the webServer configuration?",
+            options: [
+              "It ensures developers don't have to restart their local dev server on every test run, while CI always starts a clean, isolated server instance.",
+              "It stops the web server automatically when a test fails.",
+              "It reuses browser tabs across different machines.",
+              "It prevents Playwright from running in parallel."
+            ],
+            correctOptionIndex: 0,
+            explanation: "Locally, developers usually have a dev server already running on port 5173; reusing it saves 10-30 seconds per test run. On CI, setting reuse to false guarantees that Playwright boots a pristine server without stale state."
+          },
+          {
+            id: "kc-env-vars",
+            topic: "Environment Variables",
+            question: "What is the security risk of configuring 'ignoreHTTPSErrors: true' unconditionally in production test suites?",
+            options: [
+              "It crashes the Playwright test runner.",
+              "It allows tests to proceed over invalid, expired, or compromised SSL certificates, blinding the team to production HTTPS misconfigurations and MITM vulnerabilities.",
+              "It deletes all cookies stored in the browser.",
+              "It slows down test execution by 90%."
+            ],
+            correctOptionIndex: 1,
+            explanation: "'ignoreHTTPSErrors: true' instructs browser engines to ignore SSL certificate validation errors. In production or pre-prod suites, this masks expired certificates, hostname mismatches, or dangerous security misconfigurations."
           }
         ],
         practiceTask: {
           labRoute: "/lab/browser",
           labName: "Browser Lab",
-          objective: "Inspect responsive viewports and test device layouts dynamically using page.setViewportSize().",
+          objective: "Inspect responsive viewports, custom timeouts, and test multi-browser configurations using isolated practice configs.",
           instructions: [
-            "Navigate to /lab/browser.",
-            "Set desktop viewport resolution to 1280x800 and assert desktop navigation elements are visible.",
-            "Reconfigure viewport to mobile dimensions (375x667) and verify mobile hamburger menu appears."
+            "Open your terminal in the project root.",
+            "Inspect the isolated configuration at e2e/practice-configs/exercise1-testdir.config.ts.",
+            "Run the test using the custom config flag: npx playwright test --config=e2e/practice-configs/exercise1-testdir.config.ts.",
+            "Verify that only practice-configs.spec.ts is executed and that both relative navigation tests pass cleanly.",
+            "Inspect exercise8-ci.config.ts to see how CI environment variables conditionally branch retries and workers."
           ],
           acceptanceCriteria: [
-            "Viewport adapts without reloading page.",
-            "Desktop and mobile navigation elements are validated respectively."
+            "Practice configuration executes cleanly via --config flag.",
+            "Relative baseURL navigation passes without hardcoded hostnames.",
+            "Both tests in practice-configs.spec.ts pass within the actionTimeout window."
           ],
-          hint: "Use page.setViewportSize({ width: 375, height: 667 }) to simulate mobile devices on the fly.",
-          solutionCode: `import { test, expect } from "@playwright/test";
+          hint: "Pass the config file using --config=e2e/practice-configs/exercise1-testdir.config.ts. The test runner will load options from that file instead of the default playwright.config.ts.",
+          solutionCode: `import { defineConfig } from "@playwright/test";
 
-test("adapts layout across desktop and mobile viewports", async ({ page }) => {
-  await page.goto("/lab/browser");
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await expect(page.getByTestId("desktop-nav-links")).toBeVisible();
-
-  await page.setViewportSize({ width: 375, height: 667 });
-  await expect(page.getByTestId("mobile-hamburger-btn")).toBeVisible();
+// Exercise practice configuration
+export default defineConfig({
+  testDir: "../",
+  testMatch: /practice-configs\\.spec\\.ts/,
+  fullyParallel: true,
+  timeout: 15_000,
+  expect: {
+    timeout: 4_000,
+  },
+  use: {
+    baseURL: "http://127.0.0.1:5173",
+    actionTimeout: 10_000,
+    trace: "retain-on-failure",
+  },
 });`,
-          playwrightCommand: "npx playwright test e2e/browser.spec.ts -g 'responsive viewport'"
+          playwrightCommand: "npx playwright test --config=e2e/practice-configs/exercise1-testdir.config.ts",
+          outputInterpretation: `=== PASSING CONFIGURATION TEST OUTPUT ===
+Running 2 tests using 1 worker
+  ok 1 e2e/practice-configs.spec.ts:4:7 › Practice Configurations Verification › resolves relative path navigation against configured baseURL (905ms)
+  ok 2 e2e/practice-configs.spec.ts:11:7 › Practice Configurations Verification › verifies input controls are accessible within actionTimeout window (681ms)
+  2 passed (2.6s)
+
+Interpretation:
+- The '--config' flag successfully instructed Playwright to use the isolated exercise configuration.
+- 'testDir' and 'testMatch' accurately constrained test execution to 'practice-configs.spec.ts'.
+- 'baseURL' resolved the relative path '/practice/login' to 'http://127.0.0.1:5173/practice/login' seamlessly.`
         },
         interviewQuestions: [
           {
-            question: "What is the difference between a Playwright Worker and a BrowserContext?",
-            answer: "A Worker is a separate Node.js OS process that executes test files in parallel. Each Worker instantiates its own browser process or reuses one. Within a Worker, every test runs in a brand new, isolated BrowserContext (a lightweight in-memory incognito profile). Multiple tests in the same worker never share cookies, localStorage, or session state.",
-            architecturalContext: "Ensures complete test isolation without the immense memory overhead of launching separate browser processes for every single test."
+            question: "What is the difference between a Playwright Worker, a Browser, and a BrowserContext?",
+            answer: "A Worker is an independent Node.js OS process that executes test files in parallel. Each Worker launches a Browser instance (or connects to one). Inside a Worker, every single test runs in a brand new, isolated BrowserContext (an in-memory sandbox equivalent to an Incognito window). Multiple tests in the same worker never share cookies, localStorage, or cache. Creating a BrowserContext takes 2ms, allowing hundreds of sterile tests to run without browser relaunch overhead.",
+            architecturalContext: "This 3-tier architecture (Node Worker Process -> Browser Binary -> Ephemeral BrowserContext) provides complete test isolation while delivering execution speeds up to 10x faster than legacy Selenium WebDriver frameworks."
+          },
+          {
+            question: "Why is 'baseURL' considered a non-negotiable architectural standard in Playwright test suites?",
+            answer: "Configuring 'baseURL' decouples test scripts from environment hostnames and ports. Tests use relative paths ('await page.goto(\"/practice/login\")'), enabling the exact same test suite to run against local development (127.0.0.1:5173), ephemeral PR preview containers, staging environments, and production canary clusters simply by overriding the BASE_URL environment variable.",
+            architecturalContext: "Eliminates hardcoded hostnames, port collision errors, and brittle find-and-replace scripts when deploying across enterprise multi-environment CI/CD pipelines."
+          },
+          {
+            question: "What are the architectural dangers of excessive test retries in enterprise CI pipelines?",
+            answer: "Retries should be a safety net for genuine infrastructure instability, not a dumping ground for flaky tests. When suites allow 3-5 retries, developers stop investigating race conditions, timing issues, and database deadlocks. A suite with 10 flaky tests retried 3 times can extend CI build duration by 30-45 minutes and conceal severe production bugs that occur intermittently under heavy user load.",
+            architecturalContext: "Senior SDETs enforce retries: 0 in local dev and retries: 1 in CI, coupled with automated quarantine and alerting systems that flag any test that passes on retry."
+          },
+          {
+            question: "Why does Playwright prefer Setup Projects with dependencies over legacy globalSetup scripts?",
+            answer: "Legacy 'globalSetup' runs outside the test runner in a separate Node context, lacking access to fixtures, browser context options, tracing, and reporters. In contrast, a Setup Project (e.g. { name: 'setup', testMatch: /.*\\.setup\\.ts/ }) is a first-class Playwright test. It has access to the full 'page' and 'request' fixtures, generates traces if authentication fails, and integrates into the dependency graph via 'dependencies: [\"setup\"]'.",
+            architecturalContext: "Enables declarative session generation, HTML reporting on setup failures, and seamless multi-role authentication caching."
           }
         ]
       }
