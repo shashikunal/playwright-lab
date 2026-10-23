@@ -305,7 +305,7 @@ docsRouter.get("/", (_req, res) => {
   const pathsList = Object.entries(openApiSpec.paths)
     .map(([path, methods]) => {
       const methodEntries = Object.entries(methods)
-        .map(([m, op]: [string, any]) => {
+        .map(([m, op]: [string, Record<string, unknown>]) => {
           const color =
             m === "get"
               ? "bg-blue-500/10 text-blue-500 border-blue-500/30"

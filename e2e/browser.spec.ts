@@ -124,7 +124,8 @@ test.describe("browser and window interactions lab", () => {
     // Attempt to navigate away
     await page.getByTestId("leave-page-link").click();
 
-    // Verify page remained on /lab/browser because navigation was dismissed
+    // Verify dialog was triggered and page remained on /lab/browser because navigation was dismissed
+    expect(dialogTriggered).toBe(true);
     await expect(page).toHaveURL(/\/lab\/browser/);
   });
 });
