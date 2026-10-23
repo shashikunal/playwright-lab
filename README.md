@@ -170,31 +170,50 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
 ---
 
+---
+
+## Documentation & Playbooks
+
+- **[Windows Setup & Operations Runbook](docs/windows-setup-runbook.md)**: Local Windows installation, port allocation, and troubleshooting without Docker.
+- **[10-Day Industrial Curriculum Guide](docs/curriculum-exercises.md)**: Structured learning challenge mapping routes, exercises, and Senior/Staff SDET interview trade-offs.
+- **[Enterprise Test Engineering Playbook](docs/enterprise-test-playbook.md)**: Senior SDET guidelines on fixtures, storage state, POM architecture, and CI sharding.
+- **[Feature Traceability Matrix](docs/traceability.md)**: Complete feature-to-test verification audit.
+
+---
+
 ## Automated Test Coverage & Cross-Browser Matrix
 
-The repository features comprehensive end-to-end testing running in parallel across **Chromium**, **Firefox**, and **WebKit**:
+The repository features comprehensive end-to-end testing running in parallel across **Chromium**, **Firefox**, **WebKit**, and **Mobile Chrome**:
 
-- **Total Test Cases**: **99 tests** across 14 distinct test suites (**297 cross-browser executions**).
-- **Smoke Suite**: 14 high-priority tests tagged `@smoke` verified across all 3 browser engines (42 passing executions, 100% pass rate).
-- **Accessibility Suite**: Full WCAG 2.1 AA scanning with `@axe-core/playwright`.
-- **Visual Snapshot Suite**: Golden baseline screenshots generated and validated across Chromium, Firefox, and WebKit on Windows.
+- **Total Test Cases**: **136 tests** across 23 distinct test suites (**412 cross-browser executions**).
+- **Smoke Suite**: 55 critical smoke tests (`@smoke`) passing across Desktop Chromium, Desktop Firefox, Desktop WebKit, and Mobile Chrome (`Pixel 7`).
+- **Parallel Regression**: 136/136 tests passing in under 2.5 minutes with zero cross-worker crosstalk.
+- **Accessibility Suite**: Full WCAG 2.1 AA automated auditing with `@axe-core/playwright`.
+- **Visual Snapshot Suite**: Golden baseline screenshots generated and validated with dynamic timestamp masking and frozen CSS animations.
 
 ```text
-Test Suites:
-  ✓ e2e/a11y.spec.ts (4 tests)
-  ✓ e2e/auth.spec.ts (5 tests)
-  ✓ e2e/browser.spec.ts (6 tests)
-  ✓ e2e/catalogue.spec.ts (7 tests)
-  ✓ e2e/flaky.spec.ts (8 tests)
-  ✓ e2e/forms.spec.ts (11 tests)
-  ✓ e2e/locators.spec.ts (6 tests)
-  ✓ e2e/network.spec.ts (11 tests)
-  ✓ e2e/smoke.spec.ts (3 tests)
-  ✓ e2e/theme.spec.ts (4 tests)
-  ✓ e2e/users.spec.ts (8 tests)
-  ✓ e2e/visual.spec.ts (6 tests)
-  ✓ e2e/widgets.spec.ts (17 tests)
-  ✓ e2e/workflows.spec.ts (8 tests)
+Active Test Suites (23 Spec Files):
+  ✓ e2e/a11y.spec.ts
+  ✓ e2e/auth.setup.ts
+  ✓ e2e/auth.spec.ts
+  ✓ e2e/browser.spec.ts
+  ✓ e2e/catalogue.spec.ts
+  ✓ e2e/custom-matchers.spec.ts
+  ✓ e2e/fixtures.spec.ts
+  ✓ e2e/flaky.spec.ts
+  ✓ e2e/forms.spec.ts
+  ✓ e2e/hybrid-api-ui.spec.ts
+  ✓ e2e/learning-modes.spec.ts
+  ✓ e2e/locators.spec.ts
+  ✓ e2e/multi-context.spec.ts
+  ✓ e2e/network.spec.ts
+  ✓ e2e/pom-workflows.spec.ts
+  ✓ e2e/responsive.spec.ts
+  ✓ e2e/smoke.spec.ts
+  ✓ e2e/storage-state.spec.ts
+  ✓ e2e/theme.spec.ts
+  ✓ e2e/users.spec.ts
+  ✓ e2e/visual.spec.ts
+  ✓ e2e/widgets.spec.ts
+  ✓ e2e/workflows.spec.ts
 ```
-
-Refer to [`docs/traceability.md`](file:///c:/Users/Qsp/Desktop/playwright-learn-website/docs/traceability.md) for the complete feature-to-test traceability matrix.
