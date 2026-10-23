@@ -32,6 +32,46 @@ const difficultyStyles: Record<LessonDifficulty, string> = {
   "Senior SDET": "bg-purple-500/15 text-purple-500 border-purple-500/30",
 };
 
+function FormattedSectionContent({ content }: { content: string }) {
+  const blocks = content.split("\n\n");
+  return (
+    <div className="space-y-3.5 text-sm leading-relaxed text-text">
+      {blocks.map((block, idx) => {
+        const trimmed = block.trim();
+        if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+          const lines = trimmed.split("\n").map((l) => l.replace(/^[-•]\s*/, ""));
+          return (
+            <ul key={idx} className="list-disc list-inside space-y-1.5 pl-1 text-muted">
+              {lines.map((item, lIdx) => (
+                <li key={lIdx}>
+                  <span className="text-text">{item}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        if (/^\d+\.\s/.test(trimmed)) {
+          const lines = trimmed.split("\n").map((l) => l.replace(/^\d+\.\s*/, ""));
+          return (
+            <ol key={idx} className="list-decimal list-inside space-y-1.5 pl-1 text-muted">
+              {lines.map((item, lIdx) => (
+                <li key={lIdx}>
+                  <span className="text-text">{item}</span>
+                </li>
+              ))}
+            </ol>
+          );
+        }
+        return (
+          <p key={idx} className="text-text leading-relaxed">
+            {trimmed}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PlaywrightDocs() {
   const { lessonId } = useParams<{ lessonId?: string }>();
   const navigate = useNavigate();
@@ -217,8 +257,8 @@ export function PlaywrightDocs() {
           {currentLesson.sections.map((section) => (
             <section key={section.id} id={section.id} className="mt-10 scroll-mt-20">
               <h2 className="text-xl font-bold tracking-tight text-text">{section.title}</h2>
-              <div className="mt-3 rounded-lg border border-border bg-surface p-5 text-sm leading-relaxed text-text">
-                <p className="leading-relaxed">{section.content}</p>
+              <div className="mt-3 rounded-lg border border-border bg-surface p-5 shadow-xs">
+                <FormattedSectionContent content={section.content} />
               </div>
             </section>
           ))}

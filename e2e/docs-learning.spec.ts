@@ -26,16 +26,21 @@ test.describe("Playwright Docs & Learning Path", () => {
     await expect(page).toHaveURL(/.*\/learn\/playwright\/playwright-introduction/);
 
     // Header checks
-    await expect(page.getByTestId("lesson-title")).toHaveText("Introduction to Playwright & Process Model");
+    await expect(page.getByTestId("lesson-title")).toHaveText("Your First Playwright Test");
     await expect(page.getByTestId("lesson-difficulty-badge")).toHaveText("Beginner");
-    await expect(page.getByText("15 min read & practice")).toBeVisible();
+    await expect(page.getByText("20 min read & practice")).toBeVisible();
 
     // Section headers
     await expect(page.locator("#overview")).toBeVisible();
     await expect(page.locator("#architecture-overview")).toBeVisible();
+    await expect(page.locator("#test-expect-page-fixtures")).toBeVisible();
+    await expect(page.locator("#terminal-execution")).toBeVisible();
+    await expect(page.locator("#test-discovery-rules")).toBeVisible();
+    await expect(page.locator("#assertion-diagnostics")).toBeVisible();
     await expect(page.locator("#code-examples")).toBeVisible();
     await expect(page.locator("#common-pitfalls")).toBeVisible();
     await expect(page.locator("#hands-on-practice")).toBeVisible();
+    await expect(page.locator("#interview-qa")).toBeVisible();
   });
 
   test("sidebar searches and filters curriculum lessons dynamically", async ({ page }) => {

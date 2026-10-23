@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, HelpCircle, Lightbulb, Play, Terminal } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Code2, ExternalLink, HelpCircle, Lightbulb, Play, Terminal } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { PracticeTask } from "../../data/learningPath/types";
@@ -12,6 +12,7 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
   const [showHint, setShowHint] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [cmdCopied, setCmdCopied] = useState(false);
+  const [starterCopied, setStarterCopied] = useState(false);
 
   const copyCommand = async () => {
     try {
@@ -20,6 +21,17 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
       setTimeout(() => setCmdCopied(false), 2000);
     } catch {
       setCmdCopied(false);
+    }
+  };
+
+  const copyStarter = async () => {
+    if (!task.starterCode) return;
+    try {
+      await navigator.clipboard.writeText(task.starterCode);
+      setStarterCopied(true);
+      setTimeout(() => setStarterCopied(false), 2000);
+    } catch {
+      setStarterCopied(false);
     }
   };
 
@@ -55,6 +67,29 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
           <ExternalLink size={13} />
         </Link>
       </div>
+
+      {/* Starter Code */}
+      {task.starterCode && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center gap-1.5">
+              <Code2 size={13} className="text-accent" />
+              <span>Exercise Starter Code</span>
+            </h4>
+            <button
+              type="button"
+              onClick={copyStarter}
+              data-testid="copy-starter-btn"
+              className="text-[11px] font-mono text-muted hover:text-accent cursor-pointer"
+            >
+              {starterCopied ? "Copied!" : "Copy Starter Code"}
+            </button>
+          </div>
+          <div className="rounded-md border border-border bg-black/50 p-3.5 font-mono text-xs text-stone-200 overflow-x-auto">
+            <pre data-testid="starter-code">{task.starterCode}</pre>
+          </div>
+        </div>
+      )}
 
       {/* Instructions */}
       <div className="space-y-2">
@@ -95,11 +130,24 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
           type="button"
           onClick={copyCommand}
           aria-label="Copy Playwright command"
-          className="shrink-0 rounded border border-border bg-surface px-2 py-1 text-[11px] text-muted hover:text-accent transition-colors"
+          className="shrink-0 rounded border border-border bg-surface px-2 py-1 text-[11px] text-muted hover:text-accent transition-colors cursor-pointer"
         >
           {cmdCopied ? "Copied!" : "Copy"}
         </button>
       </div>
+
+      {/* Expected Output & Result Interpretation */}
+      {task.outputInterpretation && (
+        <div className="space-y-2 rounded-md border border-border bg-surface-muted/30 p-3.5 text-xs">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-text flex items-center gap-1.5">
+            <Terminal size={13} className="text-accent" />
+            <span>Expected Output & Result Interpretation</span>
+          </h4>
+          <pre className="mt-1.5 whitespace-pre-wrap font-mono text-[11px] text-stone-300 leading-relaxed bg-black/40 p-2.5 rounded border border-border">
+            {task.outputInterpretation}
+          </pre>
+        </div>
+      )}
 
       {/* Progressive Hint Accordion */}
       <div className="border-t border-border pt-3">

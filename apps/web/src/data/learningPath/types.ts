@@ -29,6 +29,8 @@ export type PracticeTask = {
   hint: string;
   solutionCode: string;
   playwrightCommand: string;
+  starterCode?: string;
+  outputInterpretation?: string;
 };
 
 export type InterviewQuestion = {

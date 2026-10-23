@@ -11,100 +11,302 @@ export const curriculumModules: CurriculumModule[] = [
         id: "playwright-introduction",
         moduleSlug: "getting-started",
         moduleTitle: "Foundation & Test Architecture",
-        title: "Introduction to Playwright & Process Model",
+        title: "Your First Playwright Test",
         difficulty: "Beginner",
-        durationMinutes: 15,
-        prerequisites: ["Node.js 18+", "Basic TypeScript/JavaScript understanding"],
-        summary: "Understand why Playwright outclasses legacy tools by running directly over browser devtools protocols with dedicated out-of-process isolation.",
+        durationMinutes: 20,
+        prerequisites: [
+          "Node.js 18+ LTS runtime installed and verified",
+          "Foundational TypeScript or JavaScript (async/await, ES modules, Promises)",
+          "Basic understanding of web technologies (HTML DOM, CSS selectors, accessible roles)"
+        ],
+        summary: "Master your first resilient end-to-end test using @playwright/test. Understand the browser process model, isolated BrowserContext and Page fixtures, auto-waiting actions, web-first assertions, command-line test discovery, and failure diagnostics against the Practice Login lab.",
         sections: [
           {
             id: "architecture-overview",
-            title: "Architecture & Process Isolation",
-            content: "Unlike Selenium WebDriver which communicates through an HTTP JSON Wire proxy layer, Playwright establishes a single bidirectional WebSocket connection directly to browser binaries (Chromium, Firefox, WebKit). A single Browser instance can host thousands of isolated BrowserContext instances—each with its own cookies, localStorage, cache, and session tokens—launching in mere milliseconds without browser restart overhead."
+            title: "Playwright Test Runner vs. Raw Browser Automation",
+            content: `Modern web automation requires a fundamental distinction between raw browser automation drivers and purpose-built test runners.
+
+Raw automation libraries (such as Puppeteer, Selenium WebDriver, or the bare 'playwright' library package) are low-level driver APIs. They provide commands to launch a browser, navigate to a URL, and click coordinates. However, raw automation provides zero test runner capabilities: you must manually manage browser lifecycles (calling browser.launch() and context.close()), implement custom worker concurrency, write custom polling wait loops, and glue together external test frameworks (such as Jest, Mocha, or Chai).
+
+In stark contrast, @playwright/test is a full-featured, enterprise-grade test automation platform designed specifically for modern dynamic web applications:
+- Direct WebSocket DevTools Protocol: Communicates directly with browser engines (Chromium, Firefox, WebKit) over a single persistent WebSocket connection, eliminating HTTP proxy latency and driver executables (such as chromedriver).
+- Ephemeral BrowserContext Isolation: Launches completely isolated browser contexts (similar to private Incognito profiles) in single-digit milliseconds, guaranteeing zero cross-test cookie, localStorage, or cache pollution without the heavyweight cost of launching a new browser process for every test.
+- Native Actionability Engine: Automatically inspects elements for actionable states (attached, visible, stable, enabled, and editable) before dispatching clicks or keystrokes, eliminating arbitrary sleep hacks.
+- Built-in Artifact Capture: Automatically records rich execution traces (trace.zip), DOM snapshots, network HAR logs, screenshots, and videos on test failure.`
           },
           {
-            id: "test-runner-anatomy",
-            title: "Anatomy of a Playwright Test",
-            content: "Playwright Test utilizes a declarative test runner with automatic fixture injection. Every test receives a fresh, isolated `page` fixture bound to an ephemeral `BrowserContext`. You never need to manually instantiate or teardown browser drivers."
+            id: "test-expect-page-fixtures",
+            title: "The Roles of test(), expect(), and the page Fixture",
+            content: `A Playwright test file is composed of three foundational building blocks provided by the '@playwright/test' package:
+
+1. The test() Declaration Block:
+The test(title, testFunction) function defines the asynchronous boundary of an individual test case. It manages test lifecycle, timeout timers (default: 30,000ms), retry policies, and worker thread assignment. Tests can be grouped into logical suites using test.describe(name, fn) and configured with test hooks such as test.beforeEach() and test.afterEach().
+
+2. The page Fixture:
+Playwright utilizes a powerful Dependency Injection system known as Fixtures. When your test function declares async ({ page }) => { ... }, Playwright automatically launches a dedicated BrowserContext and creates a fresh Page instance specifically for that test.
+The 'page' object provides high-level user simulation methods:
+- page.goto(url): Navigates to a relative or absolute URL, automatically resolving against the configured baseURL.
+- page.getByRole(role, options): Queries the accessibility tree for semantic UI elements (such as buttons, headings, and textboxes).
+- page.getByLabel(text): Locates form controls associated with semantic <label> elements.
+- locator.fill(value): Clears the input field and enters text keystrokes with pre-action validation.
+- locator.click(): Dispatches a real mouse click after verifying actionability criteria.
+
+3. The expect() Web-First Assertion Engine:
+Unlike traditional synchronous assertion libraries (which fail instantly if an element is not immediately present at that exact CPU tick), Playwright's expect() matchers are asynchronous and web-first:
+await expect(locator).toBeVisible();
+Playwright continuously re-evaluates the condition against the live DOM until the matcher passes or the assertion timeout (default: 5,000ms) elapses. This auto-waiting assertion loop is the secret to zero-flakiness in dynamic single-page applications.`
+          },
+          {
+            id: "terminal-execution",
+            title: "Executing Tests from the Terminal",
+            content: `Playwright Test provides a comprehensive Command-Line Interface (CLI) to run, filter, and debug test suites efficiently:
+
+- Run all tests across all configured browser projects:
+  npx playwright test
+
+- Run a specific test file:
+  npx playwright test e2e/practice-first-test.spec.ts
+
+- Run tests targeting a specific browser engine (e.g. Chromium, Firefox, WebKit):
+  npx playwright test e2e/practice-first-test.spec.ts --project=chromium
+
+- Run tests in Headed mode (opens a visible browser window):
+  npx playwright test e2e/practice-first-test.spec.ts --headed
+
+- Run tests with Title Pattern filtering (-g or --grep):
+  npx playwright test -g "verifies Practice Login"
+
+- Interactive UI Mode (Playwright's flagship developer experience):
+  npx playwright test --ui
+  UI Mode provides an interactive visual dashboard with time-travel step inspection, DOM snapshots before and after every action, live locator picker, and instant test re-execution on file save.
+
+- Open the interactive HTML test report:
+  npx playwright show-report`
+          },
+          {
+            id: "test-discovery-rules",
+            title: "How Playwright Discovers Test Files",
+            content: `When you invoke 'npx playwright test', the test runner automatically discovers and executes test files based on the project configuration:
+
+1. The testDir Root:
+The test discovery root is defined in 'playwright.config.ts' via the testDir property (in this repository, configured as './e2e'). Playwright recursively traverses this directory.
+
+2. Matching File Patterns:
+By default, Playwright searches for files matching the regular expression:
+.*(test|spec)\\.(ts|js|mjs)
+Standard industry convention is to name test files with the '.spec.ts' extension (e.g. 'practice-login.spec.ts', 'auth.spec.ts', 'widgets.spec.ts').
+
+3. Ignoring Non-Test Files:
+Playwright automatically ignores files inside 'node_modules', build output directories (such as 'dist' or 'build'), and helper utility files that do not match the spec naming pattern.
+
+4. Multi-Project Matrix:
+In 'playwright.config.ts', the 'projects' array defines browser configurations, device viewports, and setup dependencies (such as 'auth.setup.ts'). Playwright maps discovered test files across each enabled project.`
+          },
+          {
+            id: "assertion-diagnostics",
+            title: "Interpreting Passing & Failing Assertion Diagnostics",
+            content: `Understanding Playwright's terminal diagnostics is essential for rapid debugging:
+
+Passing Output Interpretation:
+When a test passes, Playwright outputs:
+  ok 1 [chromium] › e2e/practice-first-test.spec.ts:4:7 › verifies Practice Login portal heading and form elements (1.2s)
+  1 passed (2.1s)
+- 'ok 1 [chromium]': Indicates worker 1 succeeded on the Chromium engine.
+- '1.2s': Exact wall-clock time spent inside the test function.
+- '1 passed (2.1s)': Total elapsed time including browser launch and context teardown.
+
+Failing Assertion Anatomy:
+When an assertion fails, Playwright prints a structured diagnostic report:
+1. Expected vs. Received Difference:
+   Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+   Locator: getByRole('heading', { name: 'Practice Login Portal' })
+   Expected: visible
+   Received: <element(s) not found>
+2. Actionability Call Log:
+   Playwright displays the exact sequence of attempts during the 5,000ms polling window:
+   - locator._expect with timeout 5000ms
+   - waiting for getByRole('heading', { name: 'Practice Login Portal' })
+3. Code Snippet Frame:
+   Points directly to the file, line number, and column where execution halted.
+4. Generated Debug Artifacts:
+   Playwright automatically saves failure screenshots and traces to 'test-results/'. You can inspect the complete execution trace using:
+   npx playwright show-trace test-results/.../trace.zip`
           }
         ],
         codeExamples: [
           {
             id: "first-test",
-            caption: "Basic Playwright Test Structure (e2e/smoke.spec.ts)",
+            caption: "Complete First Playwright Test (e2e/practice-first-test.spec.ts)",
             language: "typescript",
             code: `import { test, expect } from "@playwright/test";
 
-test("authenticates user and loads workspace", async ({ page }) => {
-  // 1. Navigate to target route
+test("verifies Practice Login portal heading and form elements", async ({ page }) => {
+  // 1. Navigate to target practice page using relative path
   await page.goto("/practice/login");
 
-  // 2. Locate semantic inputs and perform user action
-  await page.getByLabel("Username").fill("student");
-  await page.getByLabel("Password").fill("Password123!");
-  await page.getByRole("button", { name: "Submit" }).click();
+  // 2. Locate stable page heading using accessible role
+  const portalHeading = page.getByRole("heading", { name: "Practice Login Portal" });
+  await expect(portalHeading).toBeVisible();
 
-  // 3. Web-first auto-retrying assertion
-  await expect(page).toHaveURL(/.*\\/practice\\/dashboard/);
-  await expect(page.getByRole("heading", { name: "Welcome to Practice Dashboard" })).toBeVisible();
+  // 3. Locate inputs via accessible labels and verify visibility
+  const usernameInput = page.getByLabel("Practice Username");
+  await expect(usernameInput).toBeVisible();
+
+  const passwordInput = page.getByLabel("Practice Password");
+  await expect(passwordInput).toBeVisible();
+
+  // 4. Locate submit button using accessible role and name
+  const submitButton = page.getByRole("button", { name: "Sign In to Practice Portal" });
+  await expect(submitButton).toBeVisible();
 });`,
             lineExplanations: [
-              { line: 1, explanation: "Import test and expect from @playwright/test runner." },
-              { line: 3, explanation: "Declare an asynchronous test case; page fixture is automatically provided." },
-              { line: 5, explanation: "Navigate to relative route; automatically prefixes baseURL configured in playwright.config.ts." },
-              { line: 8, explanation: "Semantic locator using accessible label text." },
-              { line: 13, explanation: "Web-first assertion: polls until the URL matches regex, eliminating manual sleep calls." }
+              { line: 1, explanation: "Import test and expect primitives from the official @playwright/test package." },
+              { line: 3, explanation: "Declare an asynchronous test case; destructure the isolated 'page' fixture from the test runner." },
+              { line: 5, explanation: "Navigate to '/practice/login'. Playwright automatically prepends the baseURL defined in playwright.config.ts." },
+              { line: 8, explanation: "Query the DOM using semantic getByRole with accessible name instead of fragile CSS selectors." },
+              { line: 9, explanation: "Web-first assertion: continuously polls until heading is attached, visible, and stable in the DOM." },
+              { line: 12, explanation: "Locate form input by its associated <label> text; remains resilient even if input IDs or classes change." },
+              { line: 13, explanation: "Assert that the username input control is rendered and visible to the learner." },
+              { line: 15, explanation: "Locate password input by its accessible label text." },
+              { line: 16, explanation: "Assert visibility of password input before any interaction occurs." },
+              { line: 19, explanation: "Query submit button by its semantic HTML button role and visible accessible text." },
+              { line: 20, explanation: "Assert that the submit button is visible and ready for user interaction." }
             ]
           }
         ],
         commonMistakes: [
           {
-            title: "Hardcoding localhost URLs instead of baseURL",
-            badPractice: `await page.goto("http://localhost:5173/practice/login");`,
-            goodPractice: `await page.goto("/practice/login");`,
-            explanation: "Hardcoding localhost breaks tests across CI environments, staging containers, and preview deploys. Configure baseURL in playwright.config.ts."
+            title: "Forgetting 'await' on asynchronous actions or assertions",
+            badPractice: `expect(page.getByRole("heading")).toBeVisible();`,
+            goodPractice: `await expect(page.getByRole("heading")).toBeVisible();`,
+            explanation: "In Playwright, all page interactions and web-first assertions return Promises. Omitting 'await' causes the test to proceed prematurely without waiting for the assertion to complete, leading to unhandled promise rejections and false-positive test results."
           },
           {
-            title: "Using arbitrary sleeps instead of web-first assertions",
-            badPractice: `await page.waitForTimeout(3000); expect(await page.title()).toBe("Dashboard");`,
+            title: "Using arbitrary sleeps (waitForTimeout) instead of web-first assertions",
+            badPractice: `await page.waitForTimeout(3000);\nexpect(await page.title()).toBe("Dashboard");`,
             goodPractice: `await expect(page).toHaveTitle(/Dashboard/);`,
-            explanation: "waitForTimeout causes slow and flaky tests. Web-first assertions automatically retry until condition is met or timeout expires."
+            explanation: "waitForTimeout causes slow, brittle tests. On fast machines, it wastes unnecessary seconds; on slow CI servers, 3000ms may still be too brief. Playwright's web-first assertions poll automatically with condition-based auto-waiting."
+          },
+          {
+            title: "Using brittle CSS selectors instead of accessible user-facing locators",
+            badPractice: `await page.locator("div > form > div:nth-child(2) > input.form-control").fill("student");`,
+            goodPractice: `await page.getByLabel("Practice Username").fill("student");`,
+            explanation: "Structural CSS selectors and class names break whenever UI components are refactored or styled. Accessible locators (getByRole, getByLabel) mimic real user perception and test the accessibility of your application."
+          },
+          {
+            title: "Hardcoding localhost URLs instead of relative paths with baseURL",
+            badPractice: `await page.goto("http://localhost:5173/practice/login");`,
+            goodPractice: `await page.goto("/practice/login");`,
+            explanation: "Hardcoding localhost hostnames and ports breaks tests in CI pipelines, Docker containers, and staging preview deployments. Always configure 'baseURL' in playwright.config.ts and navigate with relative paths."
           }
         ],
         practiceTask: {
           labRoute: "/practice/login",
           labName: "Practice Login Lab",
-          objective: "Automate user authentication on the Practice Login lab and verify successful session redirection.",
+          objective: "Navigate to the Practice Login portal, verify that the main page heading is visible, locate form inputs using accessible labels, and execute the test from your terminal.",
           instructions: [
-            "Navigate to the Practice Login page at /practice/login.",
-            "Locate the username field with getByLabel('Username') and enter 'student'.",
-            "Locate the password field with getByLabel('Password') and enter 'Password123!'.",
-            "Click the submit button using getByRole('button', { name: 'Submit' }).",
-            "Assert that the page navigates to /practice/dashboard and renders the welcome banner."
+            "Open your terminal in the repository root directory.",
+            "Inspect or create your practice spec file at e2e/practice-first-test.spec.ts.",
+            "Import 'test' and 'expect' from '@playwright/test'.",
+            "Inside the test block, navigate to the Practice Login route using await page.goto('/practice/login').",
+            "Locate the main portal heading using page.getByRole('heading', { name: 'Practice Login Portal' }) and assert it is visible.",
+            "Locate the username and password fields using page.getByLabel('Practice Username') and page.getByLabel('Practice Password') and assert their visibility.",
+            "Locate the submit button with page.getByRole('button', { name: 'Sign In to Practice Portal' }) and assert it is visible.",
+            "Run your test from the terminal using the documented command and inspect the passing result."
           ],
           acceptanceCriteria: [
-            "Test targets semantic role and label locators exclusively.",
-            "No hardcoded sleeps are present.",
-            "Web-first assertion verifies dashboard heading presence."
+            "Test imports 'test' and 'expect' from '@playwright/test'.",
+            "Navigation uses relative URL '/practice/login' resolving against baseURL.",
+            "Heading is located using semantic getByRole('heading', { name: 'Practice Login Portal' }).",
+            "Form inputs are located using semantic getByLabel() locators.",
+            "All assertions use asynchronous 'await expect(...).toBeVisible()'.",
+            "Test runs cleanly and passes via 'npx playwright test e2e/practice-first-test.spec.ts --project=chromium'."
           ],
-          hint: "Use page.getByLabel('Username') instead of CSS input selectors.",
+          hint: "On /practice/login, the main title is an <h1> with the exact text 'Practice Login Portal'. Use page.getByRole('heading', { name: 'Practice Login Portal' }). Form inputs have labels 'Practice Username' and 'Practice Password'.",
+          starterCode: `import { test, expect } from "@playwright/test";
+
+test("verifies Practice Login portal heading and form elements", async ({ page }) => {
+  // Step 1: Navigate to the Practice Login portal
+  // TODO: await page.goto("/practice/login");
+
+  // Step 2: Locate the portal heading using accessible role
+  // const portalHeading = page.getByRole("heading", { name: "Practice Login Portal" });
+  // TODO: assert portalHeading is visible
+
+  // Step 3: Locate input fields using accessible labels
+  // const usernameInput = page.getByLabel("Practice Username");
+  // TODO: assert usernameInput is visible
+
+  // Step 4: Locate submit button using accessible role and name
+  // const submitButton = page.getByRole("button", { name: "Sign In to Practice Portal" });
+  // TODO: assert submitButton is visible
+});`,
           solutionCode: `import { test, expect } from "@playwright/test";
 
-test("submits valid credentials and verifies dashboard", async ({ page }) => {
+test("verifies Practice Login portal heading and form elements", async ({ page }) => {
+  // 1. Navigate to the verified Practice Login route
   await page.goto("/practice/login");
-  await page.getByLabel("Username").fill("student");
-  await page.getByLabel("Password").fill("Password123!");
-  await page.getByRole("button", { name: "Submit" }).click();
-  await expect(page).toHaveURL(/.*\\/practice\\/dashboard/);
-  await expect(page.getByRole("heading", { name: /Practice Dashboard/i })).toBeVisible();
+
+  // 2. Locate the stable page heading using accessible role
+  const portalHeading = page.getByRole("heading", { name: "Practice Login Portal" });
+  await expect(portalHeading).toBeVisible();
+
+  // 3. Locate input fields using accessible label text
+  const usernameInput = page.getByLabel("Practice Username");
+  await expect(usernameInput).toBeVisible();
+
+  const passwordInput = page.getByLabel("Practice Password");
+  await expect(passwordInput).toBeVisible();
+
+  // 4. Locate the submit button using accessible role and name
+  const submitButton = page.getByRole("button", { name: "Sign In to Practice Portal" });
+  await expect(submitButton).toBeVisible();
 });`,
-          playwrightCommand: "npx playwright test e2e/practice-login.spec.ts --project=chromium"
+          playwrightCommand: "npx playwright test e2e/practice-first-test.spec.ts --project=chromium",
+          outputInterpretation: `=== PASSING TEST OUTPUT ===
+Running 2 tests using 1 worker
+  ok 1 [setup] › e2e/auth.setup.ts:7:6 › prepare auth storage states (1.4s)
+  ok 2 [chromium] › e2e/practice-first-test.spec.ts:4:7 › First Playwright Test Practice › verifies Practice Login portal heading and form elements (1.2s)
+  2 passed (4.7s)
+
+Output Interpretation:
+- 'ok 2 [chromium]': The test worker launched Chromium, created a sterile BrowserContext, and executed the test asynchronously.
+- Duration (1.2s): Confirms sub-millisecond protocol communication over WebSocket DevTools without HTTP wire overhead.
+- All 4 visibility assertions passed: 'Practice Login Portal' heading, 'Practice Username', 'Practice Password', and 'Sign In' button were attached, visible, and stable.
+
+=== INTENTIONAL FAILURE DIAGNOSTIC (If heading text is misspelled) ===
+Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+Locator: getByRole('heading', { name: 'Wrong Heading' })
+Expected: visible
+Received: <element(s) not found>
+Call log:
+  - locator._expect with timeout 5000ms
+  - waiting for getByRole('heading', { name: 'Wrong Heading' })
+
+Diagnostic Interpretation:
+- Playwright continuously retried searching the DOM for 5,000ms before timing out.
+- The Call Log pinpoints the exact selector that failed and records a failure trace in 'test-results/'.`
         },
         interviewQuestions: [
           {
             question: "How does Playwright's architecture differ from Selenium WebDriver?",
-            answer: "Selenium uses an HTTP REST protocol (JSON Wire / W3C WebDriver) where every action is a separate round-trip HTTP request sent through a standalone driver executable (chromedriver, geckodriver). Playwright communicates directly with browser engines over a single persistent WebSocket connection, enabling atomic auto-waiting, network route interception, and multi-context emulation without driver intermediaries.",
+            answer: "Selenium WebDriver uses an HTTP REST protocol (W3C WebDriver / JSON Wire) where each command is an individual HTTP request sent to a standalone driver binary (e.g. chromedriver). Playwright communicates directly with browser engines over a single persistent bidirectional WebSocket connection. This enables atomic auto-waiting, network route interception, and multi-context emulation without driver intermediaries.",
             architecturalContext: "Enables sub-millisecond execution speeds, eliminates stale element reference exceptions, and supports multi-page/multi-tab synchronization out of the box."
+          },
+          {
+            question: "Why does Playwright recommend Web-First Assertions (await expect(locator)...) over synchronous matchers?",
+            answer: "Synchronous assertions (such as expect(await locator.isVisible()).toBe(true)) evaluate the DOM at a single microsecond in time. If an element is rendering asynchronously or mid-animation, the assertion fails immediately. Playwright's web-first assertions (await expect(locator).toBeVisible()) poll the live DOM continuously until the condition is met or the timeout expires, automatically generating actionable call logs and trace snapshots.",
+            architecturalContext: "Eliminates arbitrary sleep hacks (page.waitForTimeout) and delivers deterministic, flakiness-free test execution across varied CI environments."
+          },
+          {
+            question: "What is a BrowserContext in Playwright, and why is it superior to launching new browser processes?",
+            answer: "A BrowserContext is an isolated in-memory browser session, fully equivalent to an Incognito window. It has completely separated cookies, localStorage, session storage, and cache. Creating a BrowserContext takes 2 to 5 milliseconds and consumes negligible memory, whereas launching a new Browser process takes seconds and significant system RAM.",
+            architecturalContext: "Enables Playwright to run hundreds of fully isolated tests concurrently on a single machine without test pollution or memory exhaustion."
+          },
+          {
+            question: "Why are ElementHandle and the '$ / $$' methods discouraged in modern Playwright test suites?",
+            answer: "An ElementHandle points to a specific in-memory DOM node reference. If the application re-renders or updates the DOM, the handle becomes stale and throws a 'Node is detached from document' error. In contrast, Playwright's Locator is a lazy, auto-re-querying descriptor. Every time an action or assertion is performed on a Locator, Playwright re-queries the live DOM and executes actionability checks.",
+            architecturalContext: "Locators are strict by default (throwing an error if multiple elements match) and provide complete resilience against single-page application hydration and re-renders."
           }
         ]
       },
