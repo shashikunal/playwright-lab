@@ -6,6 +6,7 @@ import { activityRouter } from "./routes/activity.js";
 import { authRouter } from "./routes/auth.js";
 import { browserRouter } from "./routes/browser.js";
 import { coursesRouter } from "./routes/courses.js";
+import { docsRouter } from "./routes/docs.js";
 import { enrollmentsRouter } from "./routes/enrollments.js";
 import { flakyRouter } from "./routes/flaky.js";
 import { formsRouter } from "./routes/forms.js";
@@ -32,6 +33,7 @@ export function createApp(env: ApiEnv) {
     }),
   );
   app.use(express.json());
+  app.use("/api/docs", docsRouter);
   app.use("/api", healthRouter);
   app.use("/api", scenariosRouter);
   app.use("/api/lab/forms", formsRouter);

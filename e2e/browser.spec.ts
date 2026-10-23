@@ -107,4 +107,24 @@ test.describe("browser and window interactions lab", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("command-palette-dialog")).toBeHidden();
   });
+
+  test("triggers and handles native beforeunload dialog on unsaved navigation", async ({ page }) => {
+    // Activate unsaved changes guard and type draft content
+    await page.getByTestId("enable-guard-checkbox").check();
+    await page.getByTestId("draft-textarea").fill("Important unsaved automation notes");
+
+    // Register dialog listener for beforeunload prompt
+    let dialogTriggered = false;
+    page.on("dialog", async (dialog) => {
+      dialogTriggered = true;
+      expect(dialog.type()).toBe("beforeunload");
+      await dialog.dismiss();
+    });
+
+    // Attempt to navigate away
+    await page.getByTestId("leave-page-link").click();
+
+    // Verify page remained on /lab/browser because navigation was dismissed
+    await expect(page).toHaveURL(/\/lab\/browser/);
+  });
 });

@@ -59,4 +59,40 @@ test.describe("educational architecture: Guided, Challenge, and Interview learni
     const copyButton = consolePanel.getByRole("button", { name: "Copy" });
     await expect(copyButton).toBeVisible();
   });
+
+  test("persists learner mastery progress to localStorage and updates progress bar", async ({ page }) => {
+    await page.goto("/");
+    // Clear any pre-existing progress
+    await page.evaluate(() => localStorage.removeItem("pil-progress"));
+    await page.reload();
+
+    const progressSection = page.getByTestId("learner-progress-section");
+    await expect(progressSection).toBeVisible();
+
+    // Verify initial state: 0 Mastered (0%)
+    await expect(page.getByTestId("progress-ratio")).toContainText("0 / ");
+    await expect(page.getByTestId("learner-progress-bar")).toHaveAttribute("aria-valuenow", "0");
+
+    // Toggle mastery on 'locators' scenario
+    const locatorsToggle = page.getByTestId("toggle-complete-locators");
+    await expect(locatorsToggle).toBeVisible();
+    await locatorsToggle.click();
+
+    // Verify mastery badge appeared and progress ratio incremented
+    await expect(page.getByTestId("mastered-label-locators")).toBeVisible();
+    await expect(page.getByTestId("progress-ratio")).toContainText("1 / ");
+
+    // Verify progress persisted in localStorage
+    const saved = await page.evaluate(() => localStorage.getItem("pil-progress"));
+    expect(saved).toContain("locators");
+
+    // Reload page and assert persistence
+    await page.reload();
+    await expect(page.getByTestId("mastered-label-locators")).toBeVisible();
+    await expect(page.getByTestId("progress-ratio")).toContainText("1 / ");
+
+    // Reset progress
+    await page.getByTestId("reset-progress-btn").click();
+    await expect(page.getByTestId("progress-ratio")).toContainText("0 / ");
+  });
 });

@@ -1,5 +1,5 @@
 import type { HealthResponse, ScenarioSummary } from "@pil/shared";
-import { RefreshCw } from "lucide-react";
+import { CheckCircle2, GraduationCap, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "../components/ui/Badge";
@@ -25,6 +25,37 @@ export function Overview() {
   const [q, setQ] = useState("");
   const [topic, setTopic] = useState("");
   const [difficulty, setDifficulty] = useState("");
+
+  // Persistent Learner Progress Tracker
+  const [completedScenarios, setCompletedScenarios] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("pil-progress");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleComplete = (id: string) => {
+    setCompletedScenarios((prev) => {
+      const updated = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+      try {
+        localStorage.setItem("pil-progress", JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
+
+  const resetProgress = () => {
+    try {
+      localStorage.removeItem("pil-progress");
+    } catch {
+      // ignore
+    }
+    setCompletedScenarios([]);
+  };
 
   const load = useCallback(() => {
     const controller = new AbortController();
@@ -54,6 +85,9 @@ export function Overview() {
     return () => controller.abort();
   }, [q, topic, difficulty]);
 
+  const totalCount = catalogue.status === "ok" ? catalogue.scenarios.length : 15;
+  const progressPercent = totalCount > 0 ? Math.round((completedScenarios.length / totalCount) * 100) : 0;
+
   return (
     <div className="mx-auto max-w-5xl">
       <p className="font-mono text-xs uppercase tracking-wider text-accent">Overview</p>
@@ -64,6 +98,7 @@ export function Overview() {
         The catalogue comes from Express. Only available scenarios are links. Planned labs stay on the page so you can see what is not built yet.
       </p>
 
+      {/* API Health */}
       <section aria-labelledby="health-heading" className="mt-8 rounded-lg border border-border bg-surface">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 id="health-heading" className="text-sm font-semibold">
@@ -72,7 +107,7 @@ export function Overview() {
           <button
             type="button"
             onClick={() => load()}
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-fg hover:opacity-90 cursor-pointer"
           >
             <RefreshCw aria-hidden="true" size={14} />
             Retry
@@ -115,12 +150,73 @@ export function Overview() {
         </div>
       </section>
 
+      {/* Persistent Learner Progress Tracker */}
+      <section
+        aria-labelledby="progress-heading"
+        className="mt-6 rounded-lg border border-border bg-surface p-5"
+        data-testid="learner-progress-section"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-lg bg-accent/10 text-accent">
+              <GraduationCap size={18} />
+            </span>
+            <div>
+              <h2 id="progress-heading" className="text-sm font-semibold text-text">
+                Learner Mastery Tracker
+              </h2>
+              <p className="text-xs text-muted">Persisted checklist tracking your senior Playwright mastery progress.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs font-bold text-accent" data-testid="progress-ratio">
+              {completedScenarios.length} / {totalCount} Mastered ({progressPercent}%)
+            </span>
+            {completedScenarios.length > 0 && (
+              <button
+                type="button"
+                onClick={resetProgress}
+                className="text-xs text-muted hover:text-text underline cursor-pointer"
+                data-testid="reset-progress-btn"
+              >
+                Reset Progress
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="w-full h-2 rounded-full bg-surface-muted overflow-hidden">
+            <div
+              role="progressbar"
+              aria-valuenow={progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="h-full bg-accent transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+              data-testid="learner-progress-bar"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Scenario Catalogue */}
       <section aria-labelledby="catalogue-heading" className="mt-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="catalogue-heading" className="text-sm font-semibold">
             Scenario catalogue
           </h2>
-          <p className="font-mono text-xs text-muted">GET /api/scenarios</p>
+          <div className="flex items-center gap-3">
+            <a
+              href="/api/docs"
+              target="_blank"
+              className="text-xs text-accent underline hover:text-accent/80 font-mono"
+              data-testid="api-docs-link"
+            >
+              OpenAPI Docs (/api/docs)
+            </a>
+            <p className="font-mono text-xs text-muted">GET /api/scenarios</p>
+          </div>
         </div>
         <form className="mt-4 grid gap-3 sm:grid-cols-3" onSubmit={(event) => event.preventDefault()}>
           <label className="block text-sm">
@@ -182,7 +278,11 @@ export function Overview() {
             <ul className="grid gap-3 md:grid-cols-2">
               {catalogue.scenarios.map((scenario) => (
                 <li key={scenario.id}>
-                  <ScenarioCard scenario={scenario} />
+                  <ScenarioCard
+                    scenario={scenario}
+                    isCompleted={completedScenarios.includes(scenario.id)}
+                    onToggleComplete={toggleComplete}
+                  />
                 </li>
               ))}
             </ul>
@@ -193,12 +293,47 @@ export function Overview() {
   );
 }
 
-function ScenarioCard({ scenario }: { scenario: ScenarioSummary }) {
+function ScenarioCard({
+  scenario,
+  isCompleted,
+  onToggleComplete,
+}: {
+  scenario: ScenarioSummary;
+  isCompleted?: boolean;
+  onToggleComplete?: (id: string) => void;
+}) {
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold">{scenario.title}</h3>
-        <Badge tone={scenario.status === "planned" ? "warning" : "neutral"}>{scenario.status}</Badge>
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-text">{scenario.title}</h3>
+          {isCompleted && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success" data-testid={`mastered-label-${scenario.id}`}>
+              <CheckCircle2 size={12} /> Mastered
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {onToggleComplete && scenario.status === "available" && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleComplete(scenario.id);
+              }}
+              data-testid={`toggle-complete-${scenario.id}`}
+              className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                isCompleted
+                  ? "bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20"
+                  : "bg-surface-muted text-muted border-border hover:text-text hover:border-accent"
+              }`}
+            >
+              {isCompleted ? "✓ Done" : "+ Mark"}
+            </button>
+          )}
+          <Badge tone={scenario.status === "planned" ? "warning" : "neutral"}>{scenario.status}</Badge>
+        </div>
       </div>
       <p className="mt-2 text-sm text-muted">{scenario.concepts.join(", ")}</p>
       {scenario.learning ? (
