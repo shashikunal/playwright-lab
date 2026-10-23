@@ -4,7 +4,7 @@ import {
   findUserByToken,
   getActivities,
   getUserPreferences,
-  resetAppStore,
+  resetBusinessStore,
   updateUserPreferences,
 } from "../store/memory.js";
 
@@ -64,6 +64,6 @@ activityRouter.patch("/profile", authenticate, (req, res) => {
 
 // POST /api/app/business/reset - Deterministic state reset
 activityRouter.post("/business/reset", (_req, res) => {
-  resetAppStore();
+  resetBusinessStore();
   res.json({ status: "reset", message: "Business application data reset to initial seed" });
 });

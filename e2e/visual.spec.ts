@@ -7,7 +7,7 @@ test.describe("visual regression and snapshot testing", () => {
     await page.goto("/lab/visual");
   });
 
-  test("captures deterministic component screenshot with toHaveScreenshot @smoke", async ({ page }) => {
+  test("captures deterministic component screenshot with toHaveScreenshot @visual", async ({ page }) => {
     const stableCard = page.getByTestId("stable-card");
     await expect(stableCard).toBeVisible();
 

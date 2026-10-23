@@ -1,6 +1,6 @@
 import { apiError, type EnrollmentListResponse, type EnrollmentStatus } from "@pil/shared";
 import { Router } from "express";
-import { createEnrollment, findUserByToken, getCourseById, getEnrollments, logActivity, resetAppStore, updateEnrollmentStatus } from "../store/memory.js";
+import { createEnrollment, findUserByToken, getCourseById, getEnrollments, logActivity, resetEnrollmentsStore, updateEnrollmentStatus } from "../store/memory.js";
 
 export const enrollmentsRouter = Router();
 
@@ -81,6 +81,6 @@ enrollmentsRouter.patch("/:id/status", (req, res) => {
 
 // Deterministic test data reset endpoint
 enrollmentsRouter.post("/reset", (_req, res) => {
-  resetAppStore();
-  res.json({ status: "ok", message: "Application data reset to seed state" });
+  resetEnrollmentsStore();
+  res.json({ status: "ok", message: "Enrollments data reset to seed state" });
 });

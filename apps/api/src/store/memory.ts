@@ -97,15 +97,33 @@ export function resetNamespace(id = "shared"): NamespaceData {
   return next;
 }
 
+let nextCourseId = 100;
+
+export function resetCoursesStore(): void {
+  for (const c of initialCourses) {
+    if (!coursesStore.some((existing) => existing.id === c.id)) {
+      coursesStore.push(c);
+    }
+  }
+}
+
+export function resetEnrollmentsStore(): void {
+  enrollmentsStore = [...initialEnrollments];
+  resetCoursesStore();
+}
+
+export function resetBusinessStore(): void {
+  managedUsersStore = [...initialManagedUsers];
+  activitiesStore = [...initialActivities];
+  resetCoursesStore();
+}
+
 export function resetAppStore(): void {
-  coursesStore = [...initialCourses];
+  resetCoursesStore();
   enrollmentsStore = [...initialEnrollments];
   managedUsersStore = [...initialManagedUsers];
   activitiesStore = [...initialActivities];
-  nextManagedUserId = 106;
-  nextEnrollmentId = 103;
   resetNamespace("shared");
-  resetFlakyState();
 }
 
 export function addSubmission(namespaceId: string, input: Omit<IntakeRecord, "id">): IntakeRecord {
@@ -158,7 +176,7 @@ export function getCourseById(id: string): Course | undefined {
 
 export function createCourse(data: Omit<Course, "id">): Course {
   const newCourse: Course = {
-    id: `crs_${String(coursesStore.length + 1).padStart(2, "0")}`,
+    id: `crs_${nextCourseId++}`,
     ...data,
   };
   coursesStore.unshift(newCourse);

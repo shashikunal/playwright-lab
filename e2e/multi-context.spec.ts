@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures/index.js";
+import { EnrollmentWizardPage } from "./pages/EnrollmentWizardPage.js";
 
 test.describe("multi-context concurrent collaboration and session isolation", () => {
   test("learner submits enrollment in Context A and admin approves in Context B simultaneously", async ({
@@ -21,18 +22,14 @@ test.describe("multi-context concurrent collaboration and session isolation", ()
       );
     });
 
-    await learnerPage.goto("/app/enrollments");
-    await learnerPage.getByLabel("Number of Seats (1-10)").fill("4");
-    await learnerPage.getByRole("button", { name: /Next Step/i }).click();
-
-    await learnerPage.getByLabel("Participant / Contact Name").fill("Alex Learner");
-    await learnerPage.getByLabel("Participant Email").fill("learner@pil.local");
-    await learnerPage.getByRole("button", { name: /Review Order/i }).click();
-
-    await learnerPage.getByRole("checkbox").check();
-    await learnerPage.getByRole("button", { name: "Confirm & Submit Enrollment" }).click();
-
-    const orderId = (await learnerPage.locator("#enrollment-confirmation").innerText()).trim();
+    const wizard = new EnrollmentWizardPage(learnerPage);
+    await wizard.open();
+    const orderId = await wizard.completeFullWizard({
+      seats: 4,
+      name: "Alex Learner",
+      email: "learner@pil.local",
+      courseId: "crs_01",
+    });
     expect(orderId).toMatch(/^enr_\d+$/);
 
     // 2. Context B: Admin Session (completely isolated cookies, storage, cache)
