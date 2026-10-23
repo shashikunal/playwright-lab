@@ -6,6 +6,7 @@ import { BrowserFrameContent } from "./pages/BrowserFrameContent";
 import { BrowserLab } from "./pages/BrowserLab";
 import { BrowserNestedContent } from "./pages/BrowserNestedContent";
 import { BrowserPopupContent } from "./pages/BrowserPopupContent";
+import { ChaosLab } from "./pages/ChaosLab";
 import { CourseDetail } from "./pages/CourseDetail";
 import { Courses } from "./pages/Courses";
 import { Enrollments } from "./pages/Enrollments";
@@ -53,6 +54,7 @@ export function App() {
               <Route path="/lab/browser/popup-content" element={<BrowserPopupContent />} />
               <Route path="/lab/browser/frame-content" element={<BrowserFrameContent />} />
               <Route path="/lab/browser/nested-frame" element={<BrowserNestedContent />} />
+              <Route path="/lab/chaos" element={<ChaosLab />} />
               <Route path="/app/courses" element={<Courses />} />
               <Route path="/app/courses/:id" element={<CourseDetail />} />
               <Route path="/app/enrollments" element={<Enrollments />} />

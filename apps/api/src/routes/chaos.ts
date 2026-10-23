@@ -79,6 +79,7 @@ chaosRouter.get("/events", (_req, res) => {
 
 // POST /api/lab/chaos/circuit-breaker/trip
 chaosRouter.post("/circuit-breaker/trip", (_req, res) => {
+  currentState.active = true;
   currentState.circuitBreakerStatus = "OPEN";
   currentState.circuitBreakerTripTime = Date.now();
   currentState.consecutiveFailures = currentState.circuitBreakerThreshold;
@@ -108,7 +109,7 @@ chaosRouter.get("/flaky-telemetry", async (_req, res) => {
   }
 
   // Fast-fail if breaker is OPEN
-  if (currentState.active && currentState.circuitBreakerStatus === "OPEN") {
+  if (currentState.circuitBreakerStatus === "OPEN") {
     currentState.injectedFaultCount += 1;
     recordEvent("503_error", "HTTP 503: Fast-fail rejected by OPEN circuit breaker");
     return res.status(503).json({

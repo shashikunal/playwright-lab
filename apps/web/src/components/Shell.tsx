@@ -1,4 +1,4 @@
-import { AlertTriangle, BookOpen, Camera, Compass, Cpu, Crosshair, FileText, Gauge, GraduationCap, KeyRound, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, UserCheck, Users, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Camera, Compass, Cpu, Crosshair, FileText, Flame, Gauge, GraduationCap, KeyRound, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, UserCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -16,13 +16,14 @@ const labs = [
   { to: "/lab/perf", label: "Performance Lab", icon: Gauge },
   { to: "/lab/wasm", label: "Wasm Sandbox", icon: Cpu },
   { to: "/lab/browser", label: "Browser Lab", icon: Compass },
+  { to: "/lab/chaos", label: "Chaos Engineering", icon: Flame },
   { to: "/app/courses", label: "Courses", icon: BookOpen },
   { to: "/app/enrollments", label: "Enrollment", icon: GraduationCap },
   { to: "/app/users", label: "Users & Staff", icon: Users },
   { to: "/app/profile", label: "Profile", icon: UserCheck },
 ];
 
-const planned = ["Chaos Engineering"];
+const planned: string[] = [];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -46,7 +47,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       ) : null}
       <aside
         id="lab-nav"
-        className={`fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-surface transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 overflow-y-auto border-r border-border bg-surface transition-transform md:static md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

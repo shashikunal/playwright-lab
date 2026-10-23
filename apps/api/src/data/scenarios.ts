@@ -715,4 +715,61 @@ export const scenarioSeed: ScenarioSummary[] = [
       }
     }
   },
+  {
+    id: "chaos",
+    title: "Chaos Engineering",
+    topic: "reliability",
+    difficulty: "advanced",
+    route: "/lab/chaos",
+    status: "available",
+    concepts: ["circuit breaker", "expect.toPass", "stale element retry", "network jitter"],
+    learning: {
+      guided: {
+        conceptOverview: "Battle-test Playwright test suites against real-world chaos: latency jitter, packet loss, 503 circuit breakers, DOM remounting, ephemeral elements, and sluggish main-thread performance.",
+        architectureDetails: [
+          "Playwright automatically retries locator actions until elements are attached, visible, stable, and enabled.",
+          "Use expect.toPass() with customized retry intervals to wait for circuit breaker self-healing.",
+          "Intercept unpredictable network packet drops with page.route() in isolated CI environments."
+        ],
+        recommendedLocators: [
+          "page.getByTestId('chaos-master-toggle')",
+          "page.getByTestId('fetch-telemetry-btn')",
+          "page.getByTestId('remounting-action-btn')",
+          "page.getByTestId('circuit-breaker-badge')"
+        ],
+        suggestedAssertions: [
+          "await expect(page.getByTestId('circuit-breaker-badge')).toHaveText('Breaker: CLOSED');",
+          "await expect(async () => { await expect(page.getByTestId('telemetry-result-card')).toContainText('200 OK'); }).toPass({ timeout: 10000 });"
+        ],
+        codeSnippet: `test('handles circuit breaker trip and canary recovery', async ({ page }) => {
+  await page.goto('/lab/chaos');
+  await page.getByTestId('trip-breaker-btn').click();
+  await expect(page.getByTestId('circuit-breaker-badge')).toHaveText('Breaker: OPEN');
+
+  await page.getByTestId('reset-breaker-btn').click();
+  await expect(page.getByTestId('circuit-breaker-badge')).toHaveText('Breaker: CLOSED');
+});`
+      },
+      challenge: {
+        objective: "Enable DOM mutation chaos, successfully click the rapidly remounting button 5 times without triggering stale element exceptions, and dismiss the modal intercept overlay.",
+        constraints: [
+          "Do not disable DOM mutation chaos during execution",
+          "Must achieve 5 successful clicks asserted via click-counter",
+          "Must dismiss obstructing overlay trap before interacting with sluggish input"
+        ],
+        acceptanceChecklist: [
+          "Resilient locator re-resolution verified",
+          "Click counter reaches 5",
+          "Obstructing overlay detected and dismissed",
+          "Sluggish input filled atomically"
+        ],
+        targetRuntimeMs: 3000
+      },
+      interview: {
+        question: "How does Playwright solve the classic Selenium StaleElementReferenceException when dynamic single-page applications remount DOM nodes during user interaction?",
+        tradeOffAnalysis: "In Selenium WebDriver, a WebElement is an opaque remote pointer to a specific DOM node reference in browser memory; if React remounts that node, the reference becomes invalid. In Playwright, a Locator is a lazily evaluated recipe (not a DOM node handle). Every time an action is performed, Playwright re-queries the DOM, performs strict actionability checks (attached, visible, stable, receive-events, enabled), and retries automatically until the timeout expires.",
+        trapToAvoid: "Never resolve elements to ElementHandle instances (page.$) when automating dynamic SPAs; always use standard Locators."
+      }
+    }
+  },
 ];
