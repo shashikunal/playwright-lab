@@ -661,64 +661,110 @@ export const initialPracticeUsers: PracticeUser[] = [
   },
 ];
 
-let practiceUsersStore: PracticeUser[] = initialPracticeUsers.map((u) => ({ ...u }));
-const practiceSessions = new Map<string, { userId: string; username: string; expiresAt: number }>();
+const practiceUsersStoreByNs = new Map<string, PracticeUser[]>();
+const practiceSessionsByNs = new Map<string, Map<string, { userId: string; username: string; expiresAt: number }>>();
 let sessionTokenCounter = 1000;
 
-export function findPracticeUserByUsername(username: string): PracticeUser | undefined {
-  return practiceUsersStore.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+function getPracticeUsersList(ns = "shared"): PracticeUser[] {
+  let list = practiceUsersStoreByNs.get(ns);
+  if (!list) {
+    list = initialPracticeUsers.map((u) => ({ ...u }));
+    practiceUsersStoreByNs.set(ns, list);
+  }
+  return list;
 }
 
-export function findPracticeUserByEmail(email: string): PracticeUser | undefined {
-  return practiceUsersStore.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+function getPracticeSessionsMap(ns = "shared"): Map<string, { userId: string; username: string; expiresAt: number }> {
+  let map = practiceSessionsByNs.get(ns);
+  if (!map) {
+    map = new Map();
+    practiceSessionsByNs.set(ns, map);
+  }
+  return map;
 }
 
-export function findPracticeUserByResetToken(token: string): PracticeUser | undefined {
-  return practiceUsersStore.find((u) => u.simulatedResetToken === token.trim());
+export function findPracticeUserByUsername(nsOrUsername: string, username?: string): PracticeUser | undefined {
+  const ns = username !== undefined ? nsOrUsername : "shared";
+  const uName = username !== undefined ? username : nsOrUsername;
+  return getPracticeUsersList(ns).find((u) => u.username.toLowerCase() === uName.trim().toLowerCase());
 }
 
-export function createPracticeSession(user: PracticeUser): { token: string; expiresAt: number } {
+export function findPracticeUserByEmail(nsOrEmail: string, email?: string): PracticeUser | undefined {
+  const ns = email !== undefined ? nsOrEmail : "shared";
+  const mail = email !== undefined ? email : nsOrEmail;
+  return getPracticeUsersList(ns).find((u) => u.email.toLowerCase() === mail.trim().toLowerCase());
+}
+
+export function findPracticeUserByResetToken(nsOrToken: string, token?: string): PracticeUser | undefined {
+  const ns = token !== undefined ? nsOrToken : "shared";
+  const tok = token !== undefined ? token : nsOrToken;
+  return getPracticeUsersList(ns).find((u) => u.simulatedResetToken === tok.trim());
+}
+
+export function createPracticeSession(nsOrUser: string | PracticeUser, user?: PracticeUser): { token: string; expiresAt: number } {
+  const ns = typeof nsOrUser === "string" ? nsOrUser : "shared";
+  const usr = (typeof nsOrUser === "object" ? nsOrUser : user)!;
   sessionTokenCounter += 1;
-  const token = `tok_practice_${user.username}_${sessionTokenCounter}_${Date.now()}`;
+  const token = `tok_practice_${usr.username}_${sessionTokenCounter}_${Date.now()}`;
   const expiresAt = Date.now() + 3600 * 1000; // 1 hour
-  practiceSessions.set(token, { userId: user.id, username: user.username, expiresAt });
+  getPracticeSessionsMap(ns).set(token, { userId: usr.id, username: usr.username, expiresAt });
   return { token, expiresAt };
 }
 
-export function verifyPracticeSession(token: string): PracticeUser | undefined {
-  const session = practiceSessions.get(token);
+export function verifyPracticeSession(nsOrToken: string, token?: string): PracticeUser | undefined {
+  const ns = token !== undefined ? nsOrToken : "shared";
+  const tok = token !== undefined ? token : nsOrToken;
+  const sessions = getPracticeSessionsMap(ns);
+  const session = sessions.get(tok);
   if (!session) return undefined;
   if (Date.now() > session.expiresAt) {
-    practiceSessions.delete(token);
+    sessions.delete(tok);
     return undefined;
   }
-  return practiceUsersStore.find((u) => u.id === session.userId);
+  return getPracticeUsersList(ns).find((u) => u.id === session.userId);
 }
 
-export function invalidatePracticeSession(token: string): boolean {
-  return practiceSessions.delete(token);
+export function invalidatePracticeSession(nsOrToken: string, token?: string): boolean {
+  const ns = token !== undefined ? nsOrToken : "shared";
+  const tok = token !== undefined ? token : nsOrToken;
+  return getPracticeSessionsMap(ns).delete(tok);
 }
 
-export function setPracticeUserPassword(userId: string, newPass: string): boolean {
-  const user = practiceUsersStore.find((u) => u.id === userId);
+export function setPracticeUserPassword(nsOrUserId: string, userIdOrPass: string, newPass?: string): boolean {
+  const ns = newPass !== undefined ? nsOrUserId : "shared";
+  const uid = newPass !== undefined ? userIdOrPass : nsOrUserId;
+  const pass = newPass !== undefined ? newPass : userIdOrPass;
+  const user = getPracticeUsersList(ns).find((u) => u.id === uid);
   if (!user) return false;
-  user.password = newPass;
+  user.password = pass;
   user.simulatedResetToken = undefined;
   return true;
 }
 
-export function setPracticeUserResetToken(usernameOrEmail: string, token: string): PracticeUser | undefined {
+export function setPracticeUserResetToken(
+  nsOrUsernameOrEmail: string,
+  usernameOrEmailOrToken: string,
+  token?: string,
+): PracticeUser | undefined {
+  const ns = token !== undefined ? nsOrUsernameOrEmail : "shared";
+  const target = token !== undefined ? usernameOrEmailOrToken : nsOrUsernameOrEmail;
+  const tok = token !== undefined ? token : usernameOrEmailOrToken;
   const user =
-    findPracticeUserByUsername(usernameOrEmail) ||
-    findPracticeUserByEmail(usernameOrEmail);
+    findPracticeUserByUsername(ns, target) ||
+    findPracticeUserByEmail(ns, target);
   if (!user) return undefined;
-  user.simulatedResetToken = token;
+  user.simulatedResetToken = tok;
   return user;
 }
 
-export function resetPracticeAuthStore(): void {
-  practiceUsersStore = initialPracticeUsers.map((u) => ({ ...u }));
-  practiceSessions.clear();
+export function resetPracticeAuthStore(ns?: string): void {
+  if (ns) {
+    practiceUsersStoreByNs.set(ns, initialPracticeUsers.map((u) => ({ ...u })));
+    practiceSessionsByNs.delete(ns);
+  } else {
+    practiceUsersStoreByNs.clear();
+    practiceSessionsByNs.clear();
+  }
   sessionTokenCounter = 1000;
 }
 

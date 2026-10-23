@@ -4,13 +4,20 @@ import { PracticeLoginPage } from "./pages/PracticeLoginPage.js";
 test.describe("Practice Login and Session Management Lab", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({ request }) => {
+  test.beforeEach(async ({ page, request }, testInfo) => {
+    const ns = testInfo.project.name;
+    await page.setExtraHTTPHeaders({ "x-worker-namespace": ns });
     // Deterministic reset of practice users and session tokens
-    await request.post("/api/practice/auth/reset");
+    await request.post("/api/practice/auth/reset", {
+      headers: { "x-worker-namespace": ns },
+    });
   });
 
-  test.afterEach(async ({ request }) => {
-    await request.post("/api/practice/auth/reset");
+  test.afterEach(async ({ request }, testInfo) => {
+    const ns = testInfo.project.name;
+    await request.post("/api/practice/auth/reset", {
+      headers: { "x-worker-namespace": ns },
+    });
   });
 
   test("authenticates successfully with valid student credentials and lands on protected dashboard @smoke", async ({
@@ -251,9 +258,11 @@ test.describe("Practice Login and Session Management Lab", () => {
     await page.keyboard.press("Enter");
     await loginPage.expectPasswordInputType("text");
 
-    // Tab to forgot password link then to submit button
+    // Tab to submit button (handles cross-browser differences where WebKit skips un-tabindexed links)
     await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
+    if (!(await loginPage.submitBtn.evaluate((el) => document.activeElement === el))) {
+      await page.keyboard.press("Tab");
+    }
     await expect(loginPage.submitBtn).toBeFocused();
     await page.keyboard.press("Enter");
 

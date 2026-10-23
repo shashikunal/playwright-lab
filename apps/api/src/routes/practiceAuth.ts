@@ -14,8 +14,17 @@ import {
 
 export const practiceAuthRouter = Router();
 
+function getReqNs(req: { headers: Record<string, string | string[] | undefined> }): string {
+  const hdr = req.headers["x-worker-namespace"];
+  if (typeof hdr === "string" && hdr.trim()) {
+    return hdr.trim();
+  }
+  return "shared";
+}
+
 // 1. Practice Login
 practiceAuthRouter.post("/login", (req, res) => {
+  const ns = getReqNs(req);
   const { username, password } = req.body ?? {};
 
   if (!username || !password) {
@@ -23,7 +32,7 @@ practiceAuthRouter.post("/login", (req, res) => {
     return;
   }
 
-  const user = findPracticeUserByUsername(String(username));
+  const user = findPracticeUserByUsername(ns, String(username));
 
   if (!user || user.password !== String(password)) {
     res.status(401).json(apiError("invalid_credentials", "Invalid username or password"));
@@ -35,7 +44,7 @@ practiceAuthRouter.post("/login", (req, res) => {
     return;
   }
 
-  const { token, expiresAt } = createPracticeSession(user);
+  const { token, expiresAt } = createPracticeSession(ns, user);
 
   res.json({
     status: "success",
@@ -53,6 +62,7 @@ practiceAuthRouter.post("/login", (req, res) => {
 
 // 2. Practice Current Session / Me
 practiceAuthRouter.get("/me", (req, res) => {
+  const ns = getReqNs(req);
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     res.status(401).json(apiError("unauthorized", "Missing or invalid practice authorization token"));
@@ -60,7 +70,7 @@ practiceAuthRouter.get("/me", (req, res) => {
   }
 
   const token = authHeader.replace("Bearer ", "").trim();
-  const user = verifyPracticeSession(token);
+  const user = verifyPracticeSession(ns, token);
 
   if (!user) {
     res.status(401).json(apiError("invalid_session", "Practice session is invalid or has expired"));
@@ -81,10 +91,11 @@ practiceAuthRouter.get("/me", (req, res) => {
 
 // 3. Practice Logout
 practiceAuthRouter.post("/logout", (req, res) => {
+  const ns = getReqNs(req);
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.replace("Bearer ", "").trim();
-    invalidatePracticeSession(token);
+    invalidatePracticeSession(ns, token);
   }
 
   res.json({
@@ -95,6 +106,7 @@ practiceAuthRouter.post("/logout", (req, res) => {
 
 // 4. Practice Forgot Password Simulation
 practiceAuthRouter.post("/forgot-password", (req, res) => {
+  const ns = getReqNs(req);
   const { usernameOrEmail } = req.body ?? {};
 
   if (!usernameOrEmail || !String(usernameOrEmail).trim()) {
@@ -103,7 +115,7 @@ practiceAuthRouter.post("/forgot-password", (req, res) => {
   }
 
   const target = String(usernameOrEmail).trim();
-  const user = findPracticeUserByUsername(target) || findPracticeUserByEmail(target);
+  const user = findPracticeUserByUsername(ns, target) || findPracticeUserByEmail(ns, target);
 
   if (!user) {
     res.status(404).json(
@@ -113,7 +125,7 @@ practiceAuthRouter.post("/forgot-password", (req, res) => {
   }
 
   const simulatedResetToken = `rst_sim_${Date.now().toString(36)}`;
-  setPracticeUserResetToken(target, simulatedResetToken);
+  setPracticeUserResetToken(ns, target, simulatedResetToken);
 
   const emailMasked = user.email.replace(/(.{2})(.*)(@.*)/, "$1***$3");
 
@@ -128,6 +140,7 @@ practiceAuthRouter.post("/forgot-password", (req, res) => {
 
 // 5. Practice Reset Password
 practiceAuthRouter.post("/reset-password", (req, res) => {
+  const ns = getReqNs(req);
   const { token, newPassword } = req.body ?? {};
 
   if (!token || !newPassword) {
@@ -140,13 +153,13 @@ practiceAuthRouter.post("/reset-password", (req, res) => {
     return;
   }
 
-  const user = findPracticeUserByResetToken(String(token));
+  const user = findPracticeUserByResetToken(ns, String(token));
   if (!user) {
     res.status(400).json(apiError("invalid_token", "Invalid or expired reset token"));
     return;
   }
 
-  setPracticeUserPassword(user.id, String(newPassword));
+  setPracticeUserPassword(ns, user.id, String(newPassword));
 
   res.json({
     status: "success",
@@ -155,8 +168,8 @@ practiceAuthRouter.post("/reset-password", (req, res) => {
 });
 
 // 6. Test Data Safe Reset
-practiceAuthRouter.post("/reset", (_req, res) => {
-  resetPracticeAuthStore();
+practiceAuthRouter.post("/reset", (req, res) => {
+  resetPracticeAuthStore(getReqNs(req));
   res.json({
     status: "ok",
     message: "Practice auth store reset to defaults",
