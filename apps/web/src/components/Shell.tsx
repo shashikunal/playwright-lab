@@ -22,7 +22,7 @@ const labs = [
   { to: "/app/profile", label: "Profile", icon: UserCheck },
 ];
 
-const planned: string[] = [];
+const planned = ["Chaos Engineering"];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
