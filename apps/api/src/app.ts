@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.js";
 import { browserRouter } from "./routes/browser.js";
 import { coursesRouter } from "./routes/courses.js";
 import { docsRouter } from "./routes/docs.js";
+import { chaosRouter } from "./routes/chaos.js";
 import { enrollmentsRouter } from "./routes/enrollments.js";
 import { flakyRouter } from "./routes/flaky.js";
 import { formsRouter } from "./routes/forms.js";
@@ -41,6 +42,7 @@ export function createApp(env: ApiEnv) {
   app.use("/api/lab/browser", browserRouter);
   app.use("/api/lab/flaky", flakyRouter);
   app.use("/api/lab/perf", perfRouter);
+  app.use("/api/lab/chaos", chaosRouter);
   app.use("/api/practice/auth", practiceAuthRouter);
   app.use("/api/app/auth", authRouter);
   app.use("/api/app/courses", coursesRouter);

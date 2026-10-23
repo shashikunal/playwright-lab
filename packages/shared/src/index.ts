@@ -277,3 +277,36 @@ export type UserProfileResponse = {
   user: UserProfile;
   preferences: NotificationPrefs;
 };
+
+// Phase 17: Chaos Engineering Types
+export type ChaosIntensity = "mild" | "moderate" | "extreme";
+
+export type CircuitBreakerStatus = "CLOSED" | "OPEN" | "HALF-OPEN";
+
+export type ChaosState = {
+  active: boolean;
+  intensity: ChaosIntensity;
+  latencyJitter: boolean;
+  jitterRangeMs: [number, number];
+  packetLossRate: number;
+  circuitBreakerThreshold: number;
+  consecutiveFailures: number;
+  circuitBreakerStatus: CircuitBreakerStatus;
+  circuitBreakerTripTime?: number;
+  domMutationChaos: boolean;
+  cpuLagSimulation: boolean;
+  lastFaultMessage?: string;
+  injectedFaultCount: number;
+};
+
+export type ChaosEvent = {
+  id: string;
+  type: "latency" | "packet_loss" | "circuit_breaker_trip" | "circuit_breaker_recover" | "dom_remount" | "cpu_spike" | "503_error";
+  message: string;
+  timestamp: string;
+};
+
+export type ChaosConfigPayload = Partial<
+  Omit<ChaosState, "consecutiveFailures" | "circuitBreakerStatus" | "circuitBreakerTripTime" | "injectedFaultCount">
+>;
+
