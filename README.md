@@ -174,6 +174,7 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
 ## Documentation & Playbooks
 
+- **[Writing Industrial Playwright Tests (10-Year SDET Guide)](docs/staff-sdet-playwright-guide.md)**: Staff SDET mindset, the 5 immutable laws, architectural patterns, and anti-pattern code review checklists.
 - **[Windows Setup & Operations Runbook](docs/windows-setup-runbook.md)**: Local Windows installation, port allocation, and troubleshooting without Docker.
 - **[10-Day Industrial Curriculum Guide](docs/curriculum-exercises.md)**: Structured learning challenge mapping routes, exercises, and Senior/Staff SDET interview trade-offs.
 - **[Enterprise Test Engineering Playbook](docs/enterprise-test-playbook.md)**: Senior SDET guidelines on fixtures, storage state, POM architecture, and CI sharding.
