@@ -29,7 +29,11 @@ export class CourseCataloguePage extends BasePage {
   }
 
   async search(query: string) {
+    const resPromise = this.page.waitForResponse(
+      (res) => res.url().includes("/api/app/courses") && res.ok(),
+    );
     await this.searchInput.fill(query);
+    await resPromise;
   }
 
   async filterByCategory(category: string) {
