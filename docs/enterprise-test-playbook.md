@@ -107,31 +107,31 @@ When a test fails in CI:
 ### Local Windows PowerShell
 ```powershell
 # Run all tests across desktop and mobile engines
-npm run test:e2e
+pnpm run test:e2e
 
 # Run only high-priority smoke tests
-npm run test:e2e:smoke
+pnpm run test:e2e:smoke
 
 # Run Chromium suite with interactive UI mode
-npm run test:e2e:ui
+pnpm run test:e2e:ui
 
 # Run specific cross-browser engine
-npm run test:e2e:firefox
-npm run test:e2e:webkit
-npm run test:e2e:mobile
+pnpm run test:e2e:firefox
+pnpm run test:e2e:webkit
+pnpm run test:e2e:mobile
 
 # View detailed HTML test report
-npx playwright show-report
+pnpm exec playwright show-report
 ```
 
 ### Continuous Integration (Linux)
 ```bash
 # Clean reproducible install
-npm ci
+pnpm install --frozen-lockfile
 
 # Install browser binaries with Linux OS dependencies
-npx playwright install --with-deps chromium firefox webkit
+pnpm exec playwright install --with-deps chromium firefox webkit
 
 # Execute complete test matrix with retry diagnostics
-npm run test:e2e
+pnpm run test:e2e
 ```

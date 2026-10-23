@@ -49,8 +49,10 @@ export type PracticeExercise = {
   id: string;
   title: string;
   objective: string;
+  scenario?: string;
   prerequisites: string[];
-  starterConfig: string;
+  starterConfig?: string;
+  starterCode?: string;
   task: string;
   acceptanceCriteria: string[];
   expectedBehavior: string;

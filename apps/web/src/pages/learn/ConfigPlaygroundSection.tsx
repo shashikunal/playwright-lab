@@ -31,6 +31,16 @@ export function ConfigPlaygroundSection({ playground }: ConfigPlaygroundSectionP
     }
   };
 
+  const isLocatorLesson = playground.title.includes("Locator");
+  const isAssertionLesson = playground.title.includes("Assertion") || playground.title.includes("Waiting");
+  const isActionLesson = playground.title.includes("Action") || playground.title.includes("Interaction");
+  const isFormLesson = playground.title.includes("Form") || playground.title.includes("Validation");
+  const isContextLesson = playground.title.includes("Context") || playground.title.includes("Navigation") || playground.title.includes("Multi-Page");
+  const isNetworkLesson = playground.title.includes("Network") || playground.title.includes("Interception") || playground.title.includes("Mocking");
+  const isApiLesson = !isNetworkLesson && (playground.title.includes("API") || playground.title.includes("HTTP"));
+  const isFixturesLesson = playground.title.includes("Fixture") || playground.title.includes("Hook");
+  const isPomLesson = playground.title.includes("Page Object") || playground.title.includes("POM");
+
   return (
     <section id="config-playground" className="mt-12 scroll-mt-20" data-testid="config-playground-section">
       <div className="flex items-center gap-2 text-accent">
@@ -50,42 +60,99 @@ export function ConfigPlaygroundSection({ playground }: ConfigPlaygroundSectionP
             type="button"
             onClick={() => setActiveTab("code")}
             data-testid="playground-tab-code"
-            className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-              activeTab === "code"
+            className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${activeTab === "code"
                 ? "bg-surface text-accent shadow-xs border border-border"
                 : "text-muted hover:text-text hover:bg-surface/50"
-            }`}
+              }`}
           >
             <Terminal size={14} />
-            <span>playwright.config.ts Structure</span>
+            <span>
+              {isPomLesson
+                ? "POM & Component Architecture Blueprint"
+                : isFixturesLesson
+                  ? "Fixtures & Architecture Blueprint"
+                  : isNetworkLesson
+                    ? "Network Mocking Blueprint"
+                    : isApiLesson
+                      ? "API Automation Blueprint"
+                      : isContextLesson
+                        ? "Contexts & Navigation Blueprint"
+                        : isFormLesson
+                          ? "Forms & Validation Blueprint"
+                          : isActionLesson
+                            ? "Browser Actions Blueprint"
+                            : isAssertionLesson
+                              ? "Assertions Pipeline Blueprint"
+                              : isLocatorLesson
+                                ? "Locator Tiering Blueprint"
+                                : "Complete playwright.config.ts Blueprint"}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("properties")}
             data-testid="playground-tab-properties"
-            className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-              activeTab === "properties"
+            className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${activeTab === "properties"
                 ? "bg-surface text-accent shadow-xs border border-border"
                 : "text-muted hover:text-text hover:bg-surface/50"
-            }`}
+              }`}
           >
             <Table size={14} />
-            <span>Property Architecture ({playground.properties.length})</span>
+            <span>
+              {isPomLesson
+                ? `POM Architecture & Design Options (${playground.properties.length})`
+                : isFixturesLesson
+                  ? `Fixtures & Hooks Architecture (${playground.properties.length})`
+                  : isNetworkLesson
+                    ? `Routing Primitives & Options (${playground.properties.length})`
+                    : isApiLesson
+                      ? `APIRequestContext Methods & Options (${playground.properties.length})`
+                      : isContextLesson
+                        ? `Contexts & Navigation Architecture (${playground.properties.length})`
+                        : isFormLesson
+                          ? `Form Controls & Validation Strategies (${playground.properties.length})`
+                          : isActionLesson
+                            ? `Action Options & Parameters Matrix (${playground.properties.length})`
+                            : isAssertionLesson
+                              ? `Web-First Assertions Matrix (${playground.properties.length})`
+                              : isLocatorLesson
+                                ? `Locator Strategy Reference (${playground.properties.length})`
+                                : `Property Architecture (${playground.properties.length})`}
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("comparison")}
             data-testid="playground-tab-comparison"
-            className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-              activeTab === "comparison"
+            className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${activeTab === "comparison"
                 ? "bg-surface text-accent shadow-xs border border-border"
                 : "text-muted hover:text-text hover:bg-surface/50"
-            }`}
+              }`}
           >
             <ToggleLeft size={14} />
-            <span>Default vs Custom Behavior</span>
+            <span>
+              {isPomLesson
+                ? "POM vs Direct Locators vs Screenplay"
+                : isFixturesLesson
+                  ? "Fixtures vs Hooks & Global State"
+                  : isNetworkLesson
+                    ? "Network Mocking vs Real Backend"
+                    : isApiLesson
+                      ? "API Testing vs Brittle Anti-Patterns"
+                      : isContextLesson
+                        ? "Multi-Context & Navigation vs Brittle Anti-Patterns"
+                        : isFormLesson
+                          ? "Robust Form Testing vs Brittle Anti-Patterns"
+                          : isActionLesson
+                            ? "User-Facing vs Synthetic Interaction"
+                            : isAssertionLesson
+                              ? "Retrying vs Non-Retrying Patterns"
+                              : isLocatorLesson
+                                ? "Semantic vs Brittle Comparison"
+                                : "Default vs Custom Behavior"}
+            </span>
           </button>
         </div>
 
@@ -93,7 +160,15 @@ export function ConfigPlaygroundSection({ playground }: ConfigPlaygroundSectionP
         {activeTab === "code" && (
           <div className="p-4 bg-black/40">
             <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/50">
-              <span className="font-mono text-xs text-muted">Production playwright.config.ts</span>
+              <span className="font-mono text-xs text-muted">
+                {isActionLesson
+                  ? "production-actions.spec.ts"
+                  : isAssertionLesson
+                    ? "production-assertions.spec.ts"
+                    : isLocatorLesson
+                      ? "production-locators.spec.ts"
+                      : "Production playwright.config.ts"}
+              </span>
               <button
                 type="button"
                 onClick={handleCopyCode}

@@ -47,13 +47,13 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "npm run dev -w @pil/api",
+      command: "pnpm --filter @pil/api dev",
       url: "http://127.0.0.1:3001/api/health",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
     {
-      command: "npm run dev -w @pil/web",
+      command: "pnpm --filter @pil/web dev",
       url: "http://127.0.0.1:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

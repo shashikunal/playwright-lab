@@ -21,7 +21,7 @@ Built to run locally on Windows without Docker, third-party demo dependencies, o
 
 ### 1. Prerequisites
 - Node.js 20 or newer
-- npm v10+
+- pnpm v10+ (or v9+)
 
 ### 2. Installation
 ```powershell
@@ -32,15 +32,15 @@ cd C:\Users\Qsp\Desktop\playwright-learn-website
 copy .env.example .env
 
 # Install monorepo dependencies
-npm install
+pnpm install
 
 # Install Playwright Chromium browser
-npx playwright install chromium
+pnpm exec playwright install chromium
 ```
 
 ### 3. Development Server
 ```powershell
-npm run dev
+pnpm run dev
 ```
 Starts both backend (`http://127.0.0.1:3001`) and frontend (`http://127.0.0.1:5173`) concurrently.
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
@@ -51,18 +51,18 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Starts Express API and Vite web dev servers concurrently |
-| `npm run build` | Compiles `@pil/shared`, `@pil/api`, and `@pil/web` production bundles |
-| `npm run typecheck` | Runs strict TypeScript verification across all workspaces |
-| `npm run lint` | Runs ESLint 9 flat-config across the monorepo |
-| `npm run test:e2e` | Executes the complete cross-browser matrix and device test suites |
-| `npm run test:e2e:smoke` | Runs high-priority smoke tests (`@smoke`) in under 45s |
-| `npm run test:e2e:chrome` | Runs test suites exclusively on Chromium |
-| `npm run test:e2e:firefox` | Runs test suites on Mozilla Firefox |
-| `npm run test:e2e:webkit` | Runs test suites on Apple WebKit (Safari engine) |
-| `npm run test:e2e:mobile` | Runs mobile viewport responsive tests (Pixel 7 emulation) |
-| `npm run test:e2e:ui` | Launches Playwright's interactive visual UI runner |
-| `npx playwright show-report` | Opens the interactive HTML test execution report |
+| `pnpm run dev` | Starts Express API and Vite web dev servers concurrently |
+| `pnpm run build` | Compiles `@pil/shared`, `@pil/api`, and `@pil/web` production bundles |
+| `pnpm run typecheck` | Runs strict TypeScript verification across all workspaces |
+| `pnpm run lint` | Runs ESLint 9 flat-config across the monorepo |
+| `pnpm run test:e2e` | Executes the complete cross-browser matrix and device test suites |
+| `pnpm run test:e2e:smoke` | Runs high-priority smoke tests (`@smoke`) in under 45s |
+| `pnpm run test:e2e:chrome` | Runs test suites exclusively on Chromium |
+| `pnpm run test:e2e:firefox` | Runs test suites on Mozilla Firefox |
+| `pnpm run test:e2e:webkit` | Runs test suites on Apple WebKit (Safari engine) |
+| `pnpm run test:e2e:mobile` | Runs mobile viewport responsive tests (Pixel 7 emulation) |
+| `pnpm run test:e2e:ui` | Launches Playwright's interactive visual UI runner |
+| `pnpm exec playwright show-report` | Opens the interactive HTML test execution report |
 
 ---
 

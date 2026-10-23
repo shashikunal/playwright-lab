@@ -21,8 +21,8 @@ try {
 
 # 2. Check if node_modules exists
 if (-not (Test-Path "node_modules")) {
-    Write-Host "[SETUP] node_modules not found. Installing dependencies via npm install..." -ForegroundColor Cyan
-    npm install
+    Write-Host "[SETUP] node_modules not found. Installing dependencies via pnpm install..." -ForegroundColor Cyan
+    pnpm install
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Dependency installation failed."
         exit $LASTEXITCODE
@@ -31,7 +31,7 @@ if (-not (Test-Path "node_modules")) {
 
 # 3. Build shared types
 Write-Host "[BUILD] Compiling @pil/shared contracts..." -ForegroundColor Cyan
-npm run build -w @pil/shared
+pnpm --filter @pil/shared build
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to build shared packages."
     exit $LASTEXITCODE
@@ -46,4 +46,4 @@ Write-Host "Press Ctrl+C at any time to shut down the servers." -ForegroundColor
 Write-Host ""
 
 # 4. Start concurrent processes
-npm run dev
+pnpm run dev

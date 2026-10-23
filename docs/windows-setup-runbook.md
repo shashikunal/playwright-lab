@@ -8,7 +8,7 @@ This guide provides end-to-end instructions for running and testing the **Playwr
 
 - **Operating System**: Windows 10 / Windows 11 (64-bit).
 - **Node.js**: `v20.x` or later (LTS recommended). Check with `node -v`.
-- **Package Manager**: `npm` v10+ (bundled with Node.js).
+- **Package Manager**: `pnpm` v10+ (or v9+).
 - **Shell**: PowerShell 5.1+ or PowerShell 7 (Core).
 - **Hardware**: Minimum 8GB RAM (16GB recommended for parallel browser workers).
 - **Containerization**: **None**. Docker is completely optional and not required.
@@ -40,7 +40,7 @@ Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue | Select-Obje
 ### Step 1: Install Node Dependencies
 From the repository root:
 ```powershell
-npm install
+pnpm install
 ```
 
 ### Step 2: Install Playwright Browsers
@@ -52,18 +52,18 @@ npx playwright install
 
 ### Step 3: Compile Shared Contracts
 ```powershell
-npm run build -w @pil/shared
+pnpm --filter @pil/shared build
 ```
 
 ---
 
 ## 4. Running the Industrial Lab
 
-### Option A: Standard npm Command (Recommended)
+### Option A: Standard pnpm Command (Recommended)
 ```powershell
-npm run start:lab
+pnpm run start:lab
 # Or equivalently:
-npm run dev
+pnpm run dev
 ```
 
 ### Option B: PowerShell Automated Launcher
@@ -84,28 +84,28 @@ The Playwright configuration automatically starts background servers during test
 ### Fast Smoke Suite (Cross-Browser Matrix)
 Runs the critical happy-path tests across Chromium, Firefox, WebKit, and Mobile Chrome:
 ```powershell
-npm run test:e2e:smoke
+pnpm run test:e2e:smoke
 ```
 
 ### Project-Specific Test Runs
 ```powershell
 # Desktop Chromium (136 tests)
-npm run test:e2e:chrome
+pnpm run test:e2e:chrome
 
 # Desktop Firefox
-npm run test:e2e:firefox
+pnpm run test:e2e:firefox
 
 # Desktop WebKit (Safari engine)
-npm run test:e2e:webkit
+pnpm run test:e2e:webkit
 
 # Mobile Device Viewport (Google Pixel 7 emulation)
-npm run test:e2e:mobile
+pnpm run test:e2e:mobile
 ```
 
 ### Interactive UI Mode (Visual Debugging)
 Launches the Playwright interactive GUI to step through locators, time-travel, and inspect DOM snapshots:
 ```powershell
-npm run test:e2e:ui
+pnpm run test:e2e:ui
 ```
 
 ### Targeted Spec Execution
@@ -145,7 +145,7 @@ The trace captures:
 
 | Symptom | Cause | Solution |
 |---|---|---|
-| `PSSecurityException: File cannot be loaded because running scripts is disabled` | PowerShell execution policy restriction | Run using `powershell -ExecutionPolicy Bypass -File .\scripts\start-lab.ps1` or use `npm run dev`. |
+| `PSSecurityException: File cannot be loaded because running scripts is disabled` | PowerShell execution policy restriction | Run using `powershell -ExecutionPolicy Bypass -File .\scripts\start-lab.ps1` or use `pnpm run dev`. |
 | `EADDRINUSE: address already in use :::3001` | Zombie Node.js background process holding port | Run the port-killing PowerShell command from Section 2. |
 | `Browser closed unexpectedly` during WebKit runs | Missing Windows graphics media pack | Run `npx playwright install webkit` to re-download binaries. |
 | Visual regression pixel diffs on Windows vs Linux | Font rendering antialiasing differences | `toHaveScreenshot` in `e2e/visual.spec.ts` uses `maxDiffPixelRatio: 0.05` to tolerate subpixel font rendering. Run `npx playwright test e2e/visual.spec.ts -u` if updating local baselines. |

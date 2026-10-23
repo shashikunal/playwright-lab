@@ -4,9 +4,11 @@ import type { PracticeExercise } from "../../data/learningPath/types";
 
 type ExercisesSectionProps = {
   exercises: PracticeExercise[];
+  title?: string;
+  description?: string;
 };
 
-export function ExercisesSection({ exercises }: ExercisesSectionProps) {
+export function ExercisesSection({ exercises, title, description }: ExercisesSectionProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(0);
   const [copiedConfigs, setCopiedConfigs] = useState<Record<string, boolean>>({});
   const [copiedCmds, setCopiedCmds] = useState<Record<string, boolean>>({});
@@ -42,11 +44,11 @@ export function ExercisesSection({ exercises }: ExercisesSectionProps) {
       <div className="flex items-center gap-2 text-accent">
         <Play size={20} />
         <h2 className="text-xl font-bold tracking-tight text-text">
-          8 Practical Configuration Exercises
+          {title || `${exercises.length} Practical Hands-On Exercises`}
         </h2>
       </div>
       <p className="mt-1 text-sm text-muted">
-        Hands-on exercises isolating specific settings using our project test suite. Each exercise provides starter configurations, acceptance criteria, expected outcomes, and troubleshooting notes.
+        {description || "Hands-on progressive exercises connected directly to our project test suite. Each exercise provides starter code, task criteria, expected outcomes, hints, solutions, and local verification commands."}
       </p>
 
       <div className="mt-6 space-y-4">
@@ -103,25 +105,33 @@ export function ExercisesSection({ exercises }: ExercisesSectionProps) {
                     </div>
                   </div>
 
+                  {/* Scenario Description if provided */}
+                  {ex.scenario && (
+                    <div className="rounded-md border border-accent/20 bg-accent/5 p-3">
+                      <h4 className="font-mono text-[10px] font-bold uppercase tracking-wider text-accent">Scenario Description:</h4>
+                      <p className="mt-1 leading-relaxed text-text font-medium">{ex.scenario}</p>
+                    </div>
+                  )}
+
                   {/* Starter Configuration */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <h4 className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
                         <Code2 size={13} className="text-accent" />
-                        <span>Starter Configuration</span>
+                        <span>Starter Code / Configuration</span>
                       </h4>
                       <button
                         type="button"
-                        onClick={() => copyConfig(ex.id, ex.starterConfig)}
+                        onClick={() => copyConfig(ex.id, ex.starterConfig || ex.starterCode || "")}
                         data-testid={`copy-starter-config-${ex.id}`}
                         className="text-[11px] font-mono text-muted hover:text-accent cursor-pointer flex items-center gap-1"
                       >
                         {configCopied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-                        <span>{configCopied ? "Copied!" : "Copy Starter Config"}</span>
+                        <span>{configCopied ? "Copied!" : "Copy Starter Code"}</span>
                       </button>
                     </div>
                     <pre className="rounded border border-border bg-black/40 p-3 font-mono text-xs text-stone-200 overflow-x-auto">
-                      {ex.starterConfig}
+                      {ex.starterConfig || ex.starterCode}
                     </pre>
                   </div>
 

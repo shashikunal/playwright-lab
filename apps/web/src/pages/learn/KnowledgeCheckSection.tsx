@@ -4,9 +4,11 @@ import type { KnowledgeCheckQuestion } from "../../data/learningPath/types";
 
 type KnowledgeCheckSectionProps = {
   questions: KnowledgeCheckQuestion[];
+  title?: string;
+  subtitle?: string;
 };
 
-export function KnowledgeCheckSection({ questions }: KnowledgeCheckSectionProps) {
+export function KnowledgeCheckSection({ questions, title, subtitle }: KnowledgeCheckSectionProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
 
@@ -37,10 +39,10 @@ export function KnowledgeCheckSection({ questions }: KnowledgeCheckSectionProps)
           <HelpCircle size={22} />
           <div>
             <h2 className="text-xl font-bold tracking-tight text-text">
-              Knowledge Check: Playwright Configuration Assessment
+              {title || "Knowledge Check Assessment"}
             </h2>
             <p className="text-xs text-muted">
-              Test your architectural understanding of timeouts, workers, projects, browser context options, and webServer.
+              {subtitle || "Test your architectural and practical understanding with immediate feedback and post-submission explanations."}
             </p>
           </div>
         </div>

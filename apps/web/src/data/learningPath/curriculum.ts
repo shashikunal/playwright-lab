@@ -1,3 +1,10 @@
+import { actionsLesson } from "./lessons/actionsLesson";
+import { formsLesson } from "./lessons/formsLesson";
+import { browserContextsLesson } from "./lessons/browserContextsLesson";
+import { apiTestingLesson } from "./lessons/apiTestingLesson";
+import { networkInterceptionLesson } from "./lessons/networkInterceptionLesson";
+import { fixturesLesson } from "./lessons/fixturesLesson";
+import { pomArchitectureLesson } from "./lessons/pomArchitectureLesson";
 import type { CurriculumModule, Lesson } from "./types";
 
 export const curriculumModules: CurriculumModule[] = [
@@ -1168,55 +1175,994 @@ Interpretation:
     iconName: "ScanSearch",
     lessons: [
       {
-        id: "semantic-locators-hierarchy",
+        id: "playwright-locators",
         moduleSlug: "locators-and-selectors",
         moduleTitle: "Modern Semantic Locators & Strict Mode",
-        title: "The Accessible Locator Hierarchy",
-        difficulty: "Beginner",
-        durationMinutes: 20,
-        prerequisites: ["playwright-introduction"],
-        summary: "Replace brittle CSS and XPath selectors with user-facing, accessible semantic queries based on W3C accessibility trees.",
+        title: "Playwright Locators — Beginner to Advanced",
+        difficulty: "Intermediate",
+        durationMinutes: 35,
+        prerequisites: [
+          "playwright-introduction",
+          "configuration-and-browsers"
+        ],
+        summary: "A comprehensive, progressive guide to Playwright's locator architecture: from lazy evaluation, automatic waiting, and user-facing built-in locators (role, label, placeholder, text, alt, title, test-id) to CSS/XPath trade-offs, container composition, strict-mode disambiguation, dynamic DOM handling, and senior SDET debugging.",
         sections: [
           {
-            id: "priority-tiering",
-            title: "Locator Priority Tiering",
-            content: "Playwright prioritizes locators that reflect how actual users and assistive technologies perceive the interface: 1. `page.getByRole()` (Role & accessible name), 2. `page.getByLabel()` (Form controls), 3. `page.getByPlaceholder()`, 4. `page.getByText()`, and 5. `page.getByTestId()` for dynamic components without semantic HTML."
+            id: "locator-fundamentals",
+            title: "Part A — Locator Fundamentals & Architecture",
+            content: `What is a Playwright Locator?
+A Locator in Playwright represents a view to an element (or elements) on the page. Unlike legacy Selenium WebElements or Puppeteer ElementHandles, a locator is not an in-memory pointer to a specific DOM node; rather, it is a declarative query recipe that describes how to locate the target element at the exact instant an action or assertion is performed.
+
+Locators vs. ElementHandles (The Architectural Shift):
+In legacy automation frameworks like Selenium (driver.findElement), querying an element immediately captures an ElementHandle. If the frontend framework (React, Vue, Angular) triggers a state update, page animation, or re-renders the component, that DOM node is detached. Any subsequent action throws the notorious 'StaleElementReferenceException'.
+Playwright locators completely eliminate stale element errors. A locator stores the query logic, not the DOM pointer. Whenever you call an action like .click() or .fill(), Playwright re-evaluates the query in the fresh DOM tree.
+
+Lazy Evaluation & Zero Overhead:
+Creating a locator does not perform any browser communication, execute JavaScript in the page, or search the DOM:
+const submitButton = page.getByRole("button", { name: "Submit Order" });
+This statement executes synchronously in zero milliseconds. No DOM query occurs until you perform an action or run an assertion:
+await submitButton.click(); // Evaluation happens here!
+
+The Actionability Engine & Automatic Waiting:
+Before performing an action on an element, Playwright automatically runs an actionability audit against the locator:
+1. Attached: Element is present in the DOM tree.
+2. Visible: Element is visible (non-zero bounding box, not display:none or visibility:hidden).
+3. Stable: Element is not undergoing CSS animations or layout shifts.
+4. Receives Events: Element's hit-target is not obstructed by modals, overlays, or floating banners.
+5. Enabled: Element does not have the 'disabled' attribute or ARIA disabled state.
+Playwright repeats these checks up to the configured actionTimeout (default 0ms or configured 10_000ms). You never need to write manual sleeps or arbitrary polling loops.
+
+Why Reliable Locator Selection Dictates Test Suite Health:
+Test flakiness in enterprise applications stems almost entirely from brittle selectors. Selectors tightly coupled to HTML hierarchy (div > div:nth-child(3) > span) or CSS styling (.btn-orange-500) break upon the slightest UI refactoring or CSS utility redesign. Playwright advocates for user-facing locators that reflect how humans and assistive screen readers navigate the application.`
           },
           {
-            id: "why-avoid-xpath",
-            title: "Why Production Suites Avoid Brittle CSS / XPath",
-            content: "Selectors like `div > div.btn-wrapper:nth-child(2) > button` break immediately upon minor UI redesigns, Tailwind utility refactoring, or DOM restructuring. Semantic locators survive CSS rewrites because they bind to element semantics and ARIA labels."
+            id: "builtin-locators",
+            title: "Part B — Built-In User-Facing Locators",
+            content: `Playwright provides 7 built-in, accessible locator methods. They reflect the W3C Accessibility Tree and user perception rather than implementation details.
+
+1. page.getByRole(role, { name, exact, level, disabled, checked, expanded, includeHidden }):
+The highest-priority locator in Playwright. It matches elements by their semantic ARIA role (e.g. button, heading, textbox, combobox, link, checkbox, row, dialog) and accessible name.
+- Example: await page.getByRole("button", { name: "Run check" }).click();
+- Advantages: Tests functional accessibility, survives CSS and DOM rewrites, enforces valid markup.
+- Limitations: Requires accessible HTML or explicit ARIA attributes; ambiguous if multiple identical controls lack container scoping.
+
+2. page.getByLabel(text, { exact }):
+Locates input controls (<input>, <textarea>, <select>) associated with a <label> via htmlFor/id, nesting, or aria-labelledby.
+- Example: await page.getByLabel("Search courses").fill("Playwright");
+- Advantages: Guarantees that form fields are accessible to screen readers and keyboard users.
+- Limitations: Only targets form controls; fails if labels lack correct htmlFor/id linkage (demonstrated in our Locator Gym).
+
+3. page.getByPlaceholder(text, { exact }):
+Locates inputs by their placeholder attribute.
+- Example: await page.getByPlaceholder("Try Playwright").fill("locators");
+- Advantages: Convenient for search bars or inputs that lack permanent visual labels.
+- Limitations: Placeholders disappear once text is typed; should not replace proper labels for complex forms.
+
+4. page.getByText(text, { exact }):
+Searches the non-interactive text content of the DOM.
+- Example: await expect(page.getByText("Check finished")).toBeVisible();
+- Advantages: Exceptional for asserting confirmation messages, alert banners, and static typography.
+- Limitations: Not recommended for interactive elements (use getByRole for buttons and links instead).
+
+5. page.getByAltText(text, { exact }):
+Locates images, area elements, or icons by their alt text attribute.
+- Example: await expect(page.getByAltText("Company Logo")).toBeVisible();
+- Advantages: Ensures imagery has meaningful screen-reader alternatives.
+
+6. page.getByTitle(text, { exact }):
+Locates elements with a HTML title attribute or SVG <title>.
+- Example: await page.getByTitle("Locator gym shortcut").click();
+- Advantages: Great for icon buttons or tooltips backed by native browser title attributes.
+
+7. page.getByTestId(testId):
+Queries elements with data-testid (or custom attribute defined in playwright.config.ts).
+- Example: await page.getByTestId("stable-action").click();
+- Advantages: Dedicated hook that remains constant even if UX copy or accessibility structure changes.
+- Limitations: Does not test what the user sees; over-reliance can lead to shipping inaccessible UIs.
+
+Accessible Name Computation & Exact Matching:
+Browsers compute accessible names using a strict W3C hierarchy: aria-labelledby > aria-label > associated <label> / native attributes > inner text.
+By default, Playwright uses substring matching and ignores case. Passing { exact: true } requires a full, case-sensitive character match:
+page.getByRole("button", { name: "Save", exact: true });`
+          },
+          {
+            id: "css-and-xpath",
+            title: "Part C — CSS & XPath Selectors: When to Use & When to Avoid",
+            content: `Understanding Low-Level Selectors in Modern Automation:
+Playwright supports standard CSS (page.locator(".btn")) and XPath (page.locator("//button")). However, in resilient automation architectures, these are considered fallbacks rather than primary strategies.
+
+CSS Selectors in Playwright:
+Playwright extends standard CSS with powerful pseudo-classes:
+- Attribute selectors: page.locator('[data-state="active"]')
+- Text matching: page.locator('button:has-text("Submit")')
+- Exact text matching: page.locator('button:text-is("Save")')
+- Visibility filtering: page.locator('button:visible')
+
+XPath Selectors in Playwright:
+XPath allows arbitrary traversal up and down the DOM tree:
+- Relative path: page.locator('//button[normalize-space()="Save"]')
+- Parent traversal: page.locator('//span[text()="Locators"]/ancestor::li//button')
+
+When CSS or XPath is Justified:
+1. Custom data attributes from UI component libraries (e.g. Radix UI or Headless UI data-state="open").
+2. Canvas, SVG vector paths, or charts that lack native ARIA roles.
+3. Complex DOM layout testing or styling property verification.
+
+Why Deep CSS and XPath Selectors Must Be Avoided:
+- Fragile to Markup Refactoring: A selector like 'div.space-y-1\\.5 > input#course-search' breaks when classes are altered or wrappers are introduced.
+- Non-Semantic: They do not verify whether an assistive screen reader can access or interpret the control.
+- Performance: Deep XPath queries require traversing the entire DOM tree, degrading test execution speed.
+
+Migrating Brittle Selectors to Resilient Semantic Locators:
+- Refactor 'button.btn-primary' -> page.getByRole("button", { name: "Submit" })
+- Refactor 'input#email-input' -> page.getByLabel("Email Address")
+- Refactor '//div[text()="Order 101"]/..//button' -> page.getByRole("row").filter({ hasText: "Order 101" }).getByRole("button", { name: "View" })`
+          },
+          {
+            id: "locator-composition",
+            title: "Part D — Locator Composition, Scoping & Strict Mode",
+            content: `Chaining Locators for Contextual Precision:
+You can chain locators together to drill into specific DOM hierarchies:
+const modal = page.getByRole("dialog", { name: "Edit User" });
+const saveButton = modal.getByRole("button", { name: "Save Changes" });
+await saveButton.click();
+This guarantees that only the Save button inside the 'Edit User' dialog is targeted, ignoring other Save buttons on the background screen.
+
+Container Filtering with .filter():
+When repeated elements (cards, table rows, list items) share identical internal buttons, use .filter() to narrow the query:
+1. filter({ hasText: "string" | RegExp }): Matches containers containing specific text.
+   const row = page.getByRole("listitem").filter({ hasText: "Fixtures" });
+2. filter({ has: locator }): Matches containers containing an element that satisfies a nested locator query.
+   const activeCard = page.getByRole("article").filter({ has: page.getByRole("badge", { name: "Active" }) });
+3. filter({ hasNotText: "string" }): Excludes containers containing specific text.
+4. filter({ hasNot: locator }): Excludes containers matching a child locator.
+
+Combining Locators with .and() and .or():
+- locator.and(otherLocator): Matches elements that satisfy BOTH criteria simultaneously:
+  const criticalBtn = page.getByRole("button").and(page.getByTitle("Urgent Action"));
+- locator.or(otherLocator): Matches elements that satisfy EITHER criteria:
+  const confirmation = page.getByRole("heading", { name: "Welcome" }).or(page.getByRole("heading", { name: "Sign In" }));
+
+Understanding Playwright Strict Mode Violations:
+By default, all single-element locator actions (click, fill, check, selectOption) enforce Strict Mode. If a locator resolves to more than one element, Playwright halts execution immediately with a strict-mode violation error:
+Error: strict mode violation: getByRole("button", { name: "Edit" }) resolved to 2 elements.
+Why is this a good thing? In Selenium, driver.findElement() silently clicks the first matching element in the DOM. If your app adds a new button or re-renders, tests silently click the wrong control, causing bizarre downstream bugs. Playwright's strict mode forces you to disambiguate.
+
+Avoiding Blind .first() or .nth() Anti-Patterns:
+Calling locator.first() or locator.nth(2) silences strict mode, but it creates extremely brittle tests. If list rows reorder, paginate, or dynamic filters apply, your test clicks the wrong item silently. Always prefer container filtering:
+// Anti-Pattern:
+page.getByRole("listitem").nth(1).getByRole("button").click();
+// Resilient Pattern:
+page.getByRole("listitem").filter({ hasText: "Fixtures" }).getByRole("button", { name: "Open" }).click();`
+          },
+          {
+            id: "dynamic-interfaces",
+            title: "Part E — Dynamic Interfaces & Async DOM Behavior",
+            content: `Automating Modern Single Page Applications (SPAs):
+Modern applications dynamically mount, unmount, animate, and re-order components via React, Vue, or WebSockets. Playwright is architected specifically to handle these dynamic lifecycles reliably.
+
+Dynamic Lists & Repeated Components:
+When interacting with dynamic collections, use locator-based assertions rather than manual loops:
+const courses = page.getByRole("list", { name: "Courses" }).getByRole("listitem");
+await expect(courses).toHaveCount(3);
+await expect(courses).toContainText(["Locators", "Fixtures", "Unstable row"]);
+
+Tables & Row-Specific Actions:
+In tabular interfaces, rows are containers (<tr role="row">). Scope your queries by row identifier:
+const userRow = page.getByRole("row").filter({ hasText: "Alice Chen" });
+await userRow.getByRole("button", { name: "Edit user" }).click();
+
+Hidden vs. Visible Duplicate Elements:
+A key advantage of Playwright's accessible locators is that getByRole automatically ignores elements with display:none, visibility:hidden, or the hidden attribute.
+In our Locator Gym, there are three <button>Save</button> elements in the HTML, but one is wrapped in <div hidden>.
+- page.getByRole("button", { name: "Save" }) resolves only the 2 visible buttons.
+- A raw DOM selector page.locator('button:text-is("Save")') resolves all 3 elements, causing unexpected errors.
+If you explicitly need to target a hidden element, use { includeHidden: true }.
+
+Delayed Rendering & DOM Replacement:
+When a backend API responds with a delay, or a component disclosure expands, elements dynamically mount into the DOM. Playwright's web-first assertions (await expect(locator).toBeVisible()) automatically poll the DOM up to expect timeout (5000ms), eliminating the need for arbitrary sleeps.
+
+Shadow DOM Piercing:
+Playwright pierces open Shadow DOM roots automatically. You do not need to execute driver.executeScript or use shadowRoot.querySelector. Standard user-facing locators (getByRole, getByLabel, getByText) penetrate shadow trees seamlessly.`
+          },
+          {
+            id: "debugging-and-best-practices",
+            title: "Part F — Locator Debugging & Enterprise Best Practices",
+            content: `Diagnosing Zero Matches ('Waiting for locator... timed out'):
+When Playwright times out waiting for an element:
+1. Inspect Accessible Role & Name: Open Chrome DevTools, navigate to the Elements panel, open the Accessibility tab, and inspect the 'Computed Properties'. Often an accessible name is formatted differently than inner text (e.g. includes icon labels or aria-labels).
+2. Check Iframe Encapsulation: Is the element rendered inside an <iframe>? Locators must use page.frameLocator() for iframes.
+3. Check Element Visibility: Did an animation fail or is the element hidden behind an obstruction?
+4. Verify State: Check if the element is disabled, readonly, or detached.
+
+Diagnosing Multiple Matches (Strict Mode Violations):
+When a strict mode error occurs, Playwright's error message lists all matching elements:
+1. Examine the candidates in the console trace.
+2. Determine what distinguishes the target element: a parent card heading? a container role? a specific text label?
+3. Apply container scoping (parent.getByRole) or filter({ hasText }).
+
+Playwright Inspector & Debugging Tools:
+1. page.pause(): Pauses test execution and opens the Playwright Inspector window. You can interact with the page, pick locators, and step through line by line.
+2. Playwright Codegen: Run 'pnpm exec playwright codegen http://127.0.0.1:5173/lab/locators' to record user interactions and generate semantic locators automatically.
+3. VS Code / Terminal UI Mode: Run 'pnpm run test:e2e:ui' for time-travel debugging and visual locator inspection.
+
+The Senior SDET Locator Selection Hierarchy (Decision Tree):
+Tier 1: page.getByRole() — Primary choice for all interactive controls (buttons, headings, links, dialogs, checkboxes).
+Tier 2: page.getByLabel() — Primary choice for form inputs (<input>, <textarea>, <select>).
+Tier 3: page.getByPlaceholder() — For inputs with obvious placeholder hints lacking labels.
+Tier 4: page.getByText() — For static text assertions, banners, and toast messages.
+Tier 5: page.getByAltText() / page.getByTitle() — For images and title tooltips.
+Tier 6: page.getByTestId() — For dynamic custom widgets where semantic markup is impossible.
+Tier 7: page.locator(css) / XPath — ONLY for custom data attributes, SVG paths, or third-party iframe fallbacks.
+
+Eliminating Fixed Sleeps:
+Never use 'await page.waitForTimeout(3000)'. Fixed sleeps make test suites slow and inevitably fail in slower CI environments. Always await web-first assertions:
+await expect(page.getByRole("status")).toHaveText("Check finished");`
           }
         ],
         codeExamples: [
           {
-            id: "locator-examples",
-            caption: "Semantic Locator Tiering in Action",
+            id: "example-fundamentals",
+            caption: "Locator Creation vs Actionability Evaluation",
             language: "typescript",
-            code: `// Priority 1: Accessible role + name
-await page.getByRole("button", { name: "Submit Order" }).click();
+            code: `// 1. Defining locators executes synchronously (0ms, no DOM queries)
+const searchInput = page.getByLabel("Search courses");
+const runCheckBtn = page.getByRole("button", { name: "Run check" });
 
-// Priority 2: Associated label
-await page.getByLabel("Work Email").fill("sdet@enterprise.com");
+// 2. Action method triggers automatic waiting and actionability audit
+await searchInput.fill("Playwright Locators");
 
-// Priority 3: Non-interactive text search
-await expect(page.getByText("Account successfully created")).toBeVisible();
-
-// Priority 4: Test ID when accessibility markup is insufficient
-await page.getByTestId("course-card-enr-101").click();`,
+// 3. Web-first assertion polls the DOM automatically until matched
+await expect(searchInput).toHaveValue("Playwright Locators");
+await runCheckBtn.click();
+await expect(page.getByRole("status")).toHaveText("Check finished");`,
             lineExplanations: [
-              { line: 2, explanation: "Inspects accessibility tree for element with role='button' and accessible name matching 'Submit Order'." },
-              { line: 5, explanation: "Resolves <input> linked to <label> via htmlFor/id or nested containment." },
-              { line: 8, explanation: "Searches text node contents with auto-waiting for visibility." }
+              { line: 2, explanation: "Instantiates a lazy locator recipe in memory without querying the DOM." },
+              { line: 6, explanation: "Actionability checks run: Attached, Visible, Stable, Enabled, Unobstructed." },
+              { line: 9, explanation: "Web-first assertion polls until toHaveValue matches, eliminating sleeps." }
+            ]
+          },
+          {
+            id: "example-builtin-locators",
+            caption: "All 7 Built-In Semantic Locators in Practice",
+            language: "typescript",
+            code: `// 1. By semantic ARIA role + computed name
+await page.getByRole("button", { name: "Run check" }).click();
+
+// 2. By associated form label
+await page.getByLabel("Search courses").fill("Locators");
+
+// 3. By placeholder text
+await page.getByPlaceholder("Try Playwright").fill("Test");
+
+// 4. By non-interactive visible text
+await expect(page.getByText("Check finished")).toBeVisible();
+
+// 5. By title attribute
+await page.getByTitle("Locator gym shortcut").click();
+
+// 6. By image accessible alt text
+await expect(page.getByRole("img", { name: "Locator map" })).toBeVisible();
+
+// 7. By test ID attribute
+await page.getByTestId("stable-action").click();`,
+            lineExplanations: [
+              { line: 2, explanation: "Matches element with role='button' and accessible name 'Run check'." },
+              { line: 5, explanation: "Finds <input> associated with <label>Search courses</label> via htmlFor/id." },
+              { line: 8, explanation: "Finds input displaying placeholder='Try Playwright'." },
+              { line: 11, explanation: "Asserts non-interactive text node in the document." },
+              { line: 14, explanation: "Locates link or button having title='Locator gym shortcut'." },
+              { line: 17, explanation: "Locates SVG/image element having aria-label='Locator map'." },
+              { line: 20, explanation: "Fallback query for data-testid='stable-action'." }
+            ]
+          },
+          {
+            id: "example-refactor-brittle",
+            caption: "Migrating Fragile CSS & XPath to User-Facing Locators",
+            language: "typescript",
+            code: `// ❌ Fragile Anti-Pattern (breaks on CSS redesign or class refactoring):
+// await page.locator("div.space-y-1\\\\.5 > input#course-search").fill("data");
+// await page.locator("//section[1]//button[@data-testid='stable-action']").click();
+
+// ✅ Resilient User-Facing Pattern:
+const searchField = page.getByLabel("Search courses");
+await searchField.fill("Resilient Test Architecture");
+await expect(searchField).toHaveValue("Resilient Test Architecture");
+
+const submitBtn = page.getByRole("button", { name: "Run check" });
+await submitBtn.click();
+await expect(page.getByRole("status")).toHaveText("Check finished");`,
+            lineExplanations: [
+              { line: 6, explanation: "Replaces deep DOM path with user-facing label query." },
+              { line: 10, explanation: "Replaces brittle XPath index with semantic button role." }
+            ]
+          },
+          {
+            id: "example-composition-filter",
+            caption: "Advanced Container Scoping and .filter({ has, hasText })",
+            language: "typescript",
+            code: `// Disambiguate duplicate buttons using container scoping
+const buttonGroup = page.getByRole("group", { name: "Visible saves" });
+const firstSaveBtn = buttonGroup.getByRole("button", { name: "Save" }).first();
+await firstSaveBtn.click();
+await expect(page.getByRole("status")).toHaveText("Saved first copy");
+
+// Filter list items using a child locator condition
+const locatorsCard = page
+  .getByRole("listitem")
+  .filter({ has: page.getByText("Locators", { exact: true }) });
+await locatorsCard.getByRole("button", { name: "Open" }).click();
+await expect(page.getByRole("status")).toHaveText("Opened Locators");`,
+            lineExplanations: [
+              { line: 2, explanation: "Scopes query to group landmark 'Visible saves'." },
+              { line: 8, explanation: "Filters list items containing the specific child text node 'Locators'." },
+              { line: 11, explanation: "Clicks Open strictly inside the matched component container." }
+            ]
+          },
+          {
+            id: "example-dynamic-tables",
+            caption: "Robust Row Scoping in Tables & Dynamic Lists",
+            language: "typescript",
+            code: `// Target list item in dynamic collection without using brittle numeric index (.nth)
+const coursesList = page.getByRole("list", { name: "Courses" });
+const fixturesRow = coursesList
+  .getByRole("listitem")
+  .filter({ hasText: "Fixtures" });
+
+await expect(fixturesRow).toBeVisible();
+await fixturesRow.getByRole("button", { name: "Open" }).click();
+await expect(page.getByRole("status")).toHaveText("Opened Fixtures");`,
+            lineExplanations: [
+              { line: 2, explanation: "Locates parent list container by accessible name." },
+              { line: 3, explanation: "Filters items down to the single row containing 'Fixtures'." },
+              { line: 8, explanation: "Executes row-specific button action without array index coupling." }
+            ]
+          },
+          {
+            id: "example-debugging-strict-mode",
+            caption: "Strict Mode Disambiguation & Hidden Element Handling",
+            language: "typescript",
+            code: `// Unscoped click on ambiguous button triggers strict mode violation:
+// await page.getByRole("button", { name: "Edit" }).click(); // ❌ Throws error!
+
+// Diagnose candidates & resolve via parent region scoping:
+const editRegion = page.getByRole("region", { name: "Duplicate accessible names" });
+await editRegion.getByRole("button", { name: "Edit" }).first().click();
+await expect(page.getByRole("status")).toHaveText("Edit activated");
+
+// Notice getByRole automatically excludes hidden elements:
+await expect(page.getByRole("button", { name: "Save" })).toHaveCount(2); // Only 2 visible
+await expect(page.locator('button:text-is("Save")')).toHaveCount(3); // Includes <div hidden>`,
+            lineExplanations: [
+              { line: 5, explanation: "Scopes search to region to isolate duplicate buttons." },
+              { line: 10, explanation: "getByRole queries accessibility tree, ignoring non-rendered hidden nodes." },
+              { line: 11, explanation: "Raw DOM query includes hidden node, demonstrating selector divergence." }
             ]
           }
         ],
         commonMistakes: [
           {
-            title: "Using brittle CSS positional selectors",
-            badPractice: `page.locator(".btn-primary").first()`,
-            goodPractice: `page.getByRole("button", { name: "Save Changes" })`,
-            explanation: ".first() suppresses Playwright's strict mode and masks accidental DOM duplication bugs. When UI order changes, .first() silently clicks the wrong control."
+            title: "Using .first() or .nth() to silence strict-mode errors",
+            badPractice: `page.getByRole("button", { name: "Save" }).first().click();`,
+            goodPractice: `page.getByRole("group", { name: "Visible saves" }).getByRole("button", { name: "Save" }).first().click();`,
+            explanation: "Calling .first() on global unscoped queries silences strict mode and masks accidental DOM duplication bugs. When page layout or sort order changes, .first() silently clicks the wrong item. Scope to the parent container instead."
+          },
+          {
+            title: "Writing fragile CSS class or deep descendant selectors",
+            badPractice: `page.locator("div.space-y-1\\\\.5 > input#course-search");`,
+            goodPractice: `page.getByLabel("Search courses");`,
+            explanation: "Selectors tied to markup structure or Tailwind classes break upon minor UI redesigns. User-facing locators survive styling refactorings because they bind to element semantics."
+          },
+          {
+            title: "Using page.waitForTimeout() instead of locator web-first assertions",
+            badPractice: `await page.waitForTimeout(3000);\\nawait page.getByRole("button").click();`,
+            goodPractice: `await expect(page.getByRole("button")).toBeVisible();\\nawait page.getByRole("button").click();`,
+            explanation: "Arbitrary sleeps slow down test suites and inevitably produce flaky failures in slower CI environments. Web-first assertions poll the DOM automatically."
+          },
+          {
+            title: "Querying buttons or links using getByText instead of getByRole",
+            badPractice: `page.getByText("Run check").click();`,
+            goodPractice: `page.getByRole("button", { name: "Run check" }).click();`,
+            explanation: "getByText matches any DOM node with text, including static paragraphs, tooltips, or labels. getByRole guarantees that the target element actually has the interactive role='button'."
+          },
+          {
+            title: "Over-relying on data-testid instead of accessible HTML",
+            badPractice: `page.getByTestId("course-search-field");`,
+            goodPractice: `page.getByLabel("Search courses");`,
+            explanation: "Test IDs should be a fallback when semantic HTML is impossible. Relying solely on test IDs masks accessibility defects such as broken <label> htmlFor/id associations."
+          },
+          {
+            title: "Assuming hidden elements are excluded from raw DOM selectors",
+            badPractice: `expect(page.locator("button:has-text('Save')")).toHaveCount(2);`,
+            goodPractice: `expect(page.getByRole("button", { name: "Save" })).toHaveCount(2);`,
+            explanation: "Raw DOM queries match all matching nodes, even if wrapped in <div hidden> or styled with display:none. getByRole queries the accessibility tree, correctly ignoring hidden elements."
+          }
+        ],
+        playground: {
+          title: "Playwright Locator Architecture Blueprint & Strategy Matrix",
+          configExample: `import { test, expect } from "@playwright/test";
+
+test("demonstrates resilient industrial locator architecture", async ({ page }) => {
+  await page.goto("/lab/locators");
+
+  // 1. Tier 1: Query by accessible role & name
+  const mainHeading = page.getByRole("heading", {
+    name: "Choose a locator that survives a redesign.",
+    level: 1,
+  });
+  await expect(mainHeading).toBeVisible();
+
+  // 2. Tier 2: Form control associated via label
+  const searchInput = page.getByLabel("Search courses");
+  await searchInput.fill("Architecture");
+  await expect(searchInput).toHaveValue("Architecture");
+
+  // 3. Container Scoping & Disambiguation
+  const buttonGroup = page.getByRole("group", { name: "Visible saves" });
+  await buttonGroup.getByRole("button", { name: "Save" }).first().click();
+  await expect(page.getByRole("status")).toHaveText("Saved first copy");
+
+  // 4. Container filtering without positional index
+  const row = page
+    .getByRole("list", { name: "Courses" })
+    .getByRole("listitem")
+    .filter({ hasText: "Fixtures" });
+  await row.getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("status")).toHaveText("Opened Fixtures");
+});`,
+          properties: [
+            {
+              name: "getByRole(role, { name })",
+              type: "Accessibility Query",
+              defaultValue: "Strict Mode (1)",
+              description: "Queries the W3C Accessibility Tree by ARIA role and computed accessible name.",
+              impact: "Gold standard. Survives CSS refactorings, Tailwind rewrites, and structural DOM changes."
+            },
+            {
+              name: "getByLabel(text)",
+              type: "Form Control Query",
+              defaultValue: "Strict Mode (1)",
+              description: "Locates inputs linked to a label via htmlFor/id, nesting, or aria-labelledby.",
+              impact: "Ensures form controls are accessible to assistive technologies and automated suites alike."
+            },
+            {
+              name: "getByPlaceholder(text)",
+              type: "Attribute Query",
+              defaultValue: "Strict Mode (1)",
+              description: "Locates text fields matching the input placeholder attribute.",
+              impact: "Best for search fields lacking visual labels. Disappears once text is entered."
+            },
+            {
+              name: "getByText(text)",
+              type: "DOM Text Search",
+              defaultValue: "Strict Mode (1)",
+              description: "Locates non-interactive DOM text nodes using substring or exact matching.",
+              impact: "Ideal for asserting banners, error alerts, and status confirmations. Avoid for buttons."
+            },
+            {
+              name: "getByTestId(id)",
+              type: "Test Hook Query",
+              defaultValue: "Strict Mode (1)",
+              description: "Queries data-testid attributes directly without relying on UI text or semantics.",
+              impact: "Resilient fallback for complex dynamic widgets. Does not test user accessibility."
+            },
+            {
+              name: "locator.filter({ hasText, has })",
+              type: "Composition Predicate",
+              defaultValue: "All Matches",
+              description: "Narrows matching candidate elements based on text or child locator conditions.",
+              impact: "Eliminates .nth() and .first() index fragility in tables, grids, and dynamic lists."
+            },
+            {
+              name: "locator.and() / locator.or()",
+              type: "Set Operation",
+              defaultValue: "Boolean Logic",
+              description: "Combines two locators with logical intersection (and) or union (or).",
+              impact: "Handles polymorphic components, A/B test states, and multi-attribute constraints cleanly."
+            }
+          ],
+          behaviorComparison: [
+            {
+              aspect: "User-Facing vs DOM-Coupled",
+              defaultBehavior: "getByRole('button', { name: 'Save' }) queries the accessibility tree and ignores CSS classes.",
+              customizedBehavior: "locator('div.actions > button.btn-primary') breaks when CSS or layout structure refactors."
+            },
+            {
+              aspect: "Disambiguation Strategy",
+              defaultBehavior: ".filter({ hasText: 'Fixtures' }) binds specifically to the content of the target row.",
+              customizedBehavior: ".nth(1) or .first() silences strict mode and silently clicks the wrong item when sorted."
+            },
+            {
+              aspect: "Hidden Elements Handling",
+              defaultBehavior: "getByRole ignores hidden elements (display:none, hidden attribute) automatically.",
+              customizedBehavior: "Raw DOM queries locator('button:has-text(\"Save\")') match hidden nodes and fail."
+            },
+            {
+              aspect: "Timing & Actionability",
+              defaultBehavior: "Locators auto-wait for element to be attached, visible, stable, enabled, and unobstructed.",
+              customizedBehavior: "Manual page.waitForTimeout(3000) creates slow, fragile tests that fail in CI."
+            }
+          ],
+          practiceTask: "Explore the live Locator Gym at /lab/locators. Inspect accessible names, filter nested rows with hasText, and disambiguate duplicate button groups.",
+          localCommand: "pnpm exec playwright test e2e/practice-locators.spec.ts"
+        },
+        exercises: [
+          {
+            id: "ex1-heading",
+            title: "Exercise 1: Locate a Heading by Role and Accessible Name",
+            objective: "Identify level-1 and level-2 headings using accessible role queries without CSS classes.",
+            prerequisites: ["Basic Playwright test runner knowledge", "Lab running at /lab/locators"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 1: Locate heading by role and accessible name", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Locate h1 heading using getByRole
+  // TODO: Locate h2 section heading 'Stable locators'
+});`,
+            task: "Locate the primary page h1 heading and the 'Stable locators' h2 heading using page.getByRole('heading') with exact accessible names.",
+            acceptanceCriteria: [
+              "Uses getByRole('heading', { name: ... })",
+              "Asserts visibility with toBeVisible()",
+              "Zero CSS or tag-based selectors"
+            ],
+            expectedBehavior: "Playwright queries the accessibility tree and confirms both headings are visible.",
+            hint: "Pass level: 1 and level: 2 in the getByRole options object to explicitly verify heading hierarchy.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 1: Locate heading by role and accessible name", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const mainHeading = page.getByRole("heading", {
+    name: "Choose a locator that survives a redesign.",
+    level: 1,
+  });
+  await expect(mainHeading).toBeVisible();
+
+  const sectionHeading = page.getByRole("heading", {
+    name: "Stable locators",
+    level: 2,
+  });
+  await expect(sectionHeading).toBeVisible();
+});`,
+            troubleshootingNotes: "Ensure you pass the exact accessible name as computed by the browser, including punctuation.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 1'"
+          },
+          {
+            id: "ex2-label",
+            title: "Exercise 2: Find and Fill a Form Field by Label",
+            objective: "Interact with an input field associated with a label element via htmlFor/id.",
+            prerequisites: ["Form label semantics", "Locator Gym at /lab/locators"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 2: Find and fill form field by label", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Locate input via getByLabel('Search courses')
+  // TODO: Fill with 'Playwright Locators' and assert value
+});`,
+            task: "Locate the search input via getByLabel('Search courses'), fill it with 'Playwright Locators', and verify value.",
+            acceptanceCriteria: [
+              "Uses getByLabel('Search courses')",
+              "Asserts value using toHaveValue()",
+              "Verifies placeholder match"
+            ],
+            expectedBehavior: "Input receives focus, text is typed, and toHaveValue verifies the current control value.",
+            hint: "Use await expect(searchInput).toHaveValue('Playwright Locators').",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 2: Find and fill form field by label", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const searchInput = page.getByLabel("Search courses");
+  await searchInput.fill("Playwright Locators");
+  await expect(searchInput).toHaveValue("Playwright Locators");
+  await expect(page.getByPlaceholder("Try Playwright")).toHaveValue("Playwright Locators");
+});`,
+            troubleshootingNotes: "getByLabel only resolves controls that have a valid label association (htmlFor matching id, or nested input).",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 2'"
+          },
+          {
+            id: "ex3-button",
+            title: "Exercise 3: Locate a Button by Role and Name",
+            objective: "Trigger an action via accessible role and assert on dynamic status feedback.",
+            prerequisites: ["Button role semantics", "Web-first assertions"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 3: Locate button by role and name", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Locate 'Run check' button by role
+  // TODO: Click button and assert status 'Check finished'
+});`,
+            task: "Click the 'Run check' button using getByRole('button', { name: 'Run check' }) and assert on status message.",
+            acceptanceCriteria: [
+              "Uses getByRole('button', { name: 'Run check' })",
+              "Asserts getByRole('status') displays 'Check finished'"
+            ],
+            expectedBehavior: "Button click triggers state update and status feedback appears in the DOM.",
+            hint: "The status message renders with role='status'.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 3: Locate button by role and name", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const runCheckButton = page.getByRole("button", { name: "Run check" });
+  await runCheckButton.click();
+  const statusMessage = page.getByRole("status");
+  await expect(statusMessage).toBeVisible();
+  await expect(statusMessage).toHaveText("Check finished");
+});`,
+            troubleshootingNotes: "Playwright auto-waits for the button to be visible and enabled before clicking.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 3'"
+          },
+          {
+            id: "ex4-duplicate",
+            title: "Exercise 4: Handle Repeated Text and Duplicate Elements",
+            objective: "Disambiguate duplicate buttons with identical accessible names using container scoping.",
+            prerequisites: ["Container scoping", "Strict mode concepts"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 4: Handle repeated text and duplicate elements", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Scope to group 'Visible saves'
+  // TODO: Click first and second Save buttons cleanly
+});`,
+            task: "Scope to the group landmark 'Visible saves', interact with each button, and verify distinct feedback.",
+            acceptanceCriteria: [
+              "Scopes to page.getByRole('group', { name: 'Visible saves' })",
+              "Interacts with first and second buttons without unhandled strict mode errors"
+            ],
+            expectedBehavior: "Container scoping isolates the two visible buttons from any global duplicates.",
+            hint: "Chain page.getByRole('group', { name: 'Visible saves' }).getByRole('button', { name: 'Save' }).",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 4: Handle repeated text and duplicate elements", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const buttonGroup = page.getByRole("group", { name: "Visible saves" });
+  const saveButtons = buttonGroup.getByRole("button", { name: "Save" });
+  await expect(saveButtons).toHaveCount(2);
+
+  await saveButtons.first().click();
+  await expect(page.getByRole("status")).toHaveText("Saved first copy");
+
+  await saveButtons.nth(1).click();
+  await expect(page.getByRole("status")).toHaveText("Saved second copy");
+});`,
+            troubleshootingNotes: "Unscoped page.getByRole('button', { name: 'Save' }) would match multiple buttons across the page.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 4'"
+          },
+          {
+            id: "ex5-table-row",
+            title: "Exercise 5: Locate an Action Within a Specific Table Row",
+            objective: "Target a row action inside a dynamic list without relying on fragile numeric indexes.",
+            prerequisites: ["List item filtering", "Row scoping"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 5: Locate action within a specific list item", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Locate Courses list and filter listitem by 'Fixtures'
+  // TODO: Click Open button inside that row
+});`,
+            task: "Find the 'Fixtures' row in the 'Courses' list, click its 'Open' button, and assert status confirms 'Opened Fixtures'.",
+            acceptanceCriteria: [
+              "Uses .filter({ hasText: 'Fixtures' }) on listitem",
+              "Asserts page.getByRole('status') confirms 'Opened Fixtures'",
+              "Zero .nth() usage"
+            ],
+            expectedBehavior: "Playwright filters the list items down to the 'Fixtures' item and clicks its scoped button.",
+            hint: "Chain page.getByRole('list', { name: 'Courses' }).getByRole('listitem').filter({ hasText: 'Fixtures' }).",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 5: Locate action within a specific list item", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const coursesList = page.getByRole("list", { name: "Courses" });
+  const targetRow = coursesList.getByRole("listitem").filter({ hasText: "Fixtures" });
+  await expect(targetRow).toBeVisible();
+
+  await targetRow.getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("status")).toHaveText("Opened Fixtures");
+});`,
+            troubleshootingNotes: "Filtering by text guarantees that sorting or inserting new rows does not break the test.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 5'"
+          },
+          {
+            id: "ex6-filter",
+            title: "Exercise 6: Use filter() to Identify the Correct Component",
+            objective: "Filter a set of components using a child locator predicate.",
+            prerequisites: ["Nested locator filtering", "Exact text matching"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 6: Use filter with nested locator", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Filter listitem using { has: page.getByText('Locators', { exact: true }) }
+  // TODO: Click Open button and verify status
+});`,
+            task: "Filter listitems with { has: page.getByText('Locators', { exact: true }) }, click Open, and assert 'Opened Locators'.",
+            acceptanceCriteria: [
+              "Uses .filter({ has: ... }) predicate",
+              "Asserts status confirms 'Opened Locators'"
+            ],
+            expectedBehavior: "Playwright checks which listitem contains the child element satisfying the predicate.",
+            hint: "Pass page.getByText('Locators', { exact: true }) to filter({ has: ... }).",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 6: Use filter with nested locator", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const locatorsCard = page
+    .getByRole("listitem")
+    .filter({ has: page.getByText("Locators", { exact: true }) });
+  await expect(locatorsCard).toBeVisible();
+
+  await locatorsCard.getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("status")).toHaveText("Opened Locators");
+});`,
+            troubleshootingNotes: "filter({ has: locator }) is ideal when matching based on child icons, badges, or specific headings.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 6'"
+          },
+          {
+            id: "ex7-strict-mode",
+            title: "Exercise 7: Diagnose and Correct a Strict-Mode Violation",
+            objective: "Reproduce a strict-mode violation on duplicate Edit buttons and resolve it via container scoping.",
+            prerequisites: ["Playwright strict mode error mechanics"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 7: Diagnose and correct strict-mode violation", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Verify unscoped Edit button triggers strict mode violation
+  // TODO: Resolve by scoping to 'Duplicate accessible names' region
+});`,
+            task: "Capture the strict-mode violation on unscoped Edit buttons, then resolve by scoping to 'Duplicate accessible names'.",
+            acceptanceCriteria: [
+              "Demonstrates strict-mode error thrown on ambiguous click",
+              "Corrects via region scoping and asserts 'Edit activated'"
+            ],
+            expectedBehavior: "The unscoped click throws an error; the container-scoped query succeeds cleanly.",
+            hint: "Use a try/catch block with click({ timeout: 1000 }) to capture the strict mode error.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 7: Diagnose and correct strict-mode violation", async ({ page }) => {
+  await page.goto("/lab/locators");
+  let strictModeErrorCaught = false;
+  try {
+    await page.getByRole("button", { name: "Edit" }).click({ timeout: 1000 });
+  } catch (err: unknown) {
+    strictModeErrorCaught = true;
+    expect((err as Error).message).toContain("strict mode violation");
+  }
+  expect(strictModeErrorCaught).toBe(true);
+
+  const defectRegion = page.getByRole("region", { name: "Duplicate accessible names" });
+  await defectRegion.getByRole("button", { name: "Edit" }).first().click();
+  await expect(page.getByRole("status")).toHaveText("Edit activated");
+});`,
+            troubleshootingNotes: "Strict mode protects against silent false positives when UI layouts duplicate action buttons.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 7'"
+          },
+          {
+            id: "ex8-refactor-brittle",
+            title: "Exercise 8: Replace a Brittle CSS or XPath Selector",
+            objective: "Migrate fragile CSS class and XPath queries to resilient user-facing locators.",
+            prerequisites: ["CSS/XPath selector pitfalls", "Accessible locator alternatives"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 8: Refactor brittle selectors", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // Brittle anti-patterns to refactor:
+  // page.locator("div.space-y-1\\\\.5 > input#course-search")
+  // page.locator("//section[1]//button[@data-testid='stable-action']")
+});`,
+            task: "Replace brittle CSS and XPath selectors with getByLabel('Search courses') and getByRole('button', { name: 'Run check' }).",
+            acceptanceCriteria: [
+              "Zero CSS class or XPath selectors",
+              "Uses getByLabel and getByRole",
+              "Asserts status confirms 'Check finished'"
+            ],
+            expectedBehavior: "Semantic locators execute cleanly and survive any Tailwind or CSS class refactoring.",
+            hint: "Use getByLabel('Search courses') for the input and getByRole('button', { name: 'Run check' }) for the button.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 8: Refactor brittle selectors", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const searchField = page.getByLabel("Search courses");
+  await searchField.fill("Resilient Test Architecture");
+  await expect(searchField).toHaveValue("Resilient Test Architecture");
+
+  const submitBtn = page.getByRole("button", { name: "Run check" });
+  await submitBtn.click();
+  await expect(page.getByRole("status")).toHaveText("Check finished");
+});`,
+            troubleshootingNotes: "Semantic locators bind to accessibility semantics rather than transient DOM structure.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 8'"
+          },
+          {
+            id: "ex9-dynamic-dom",
+            title: "Exercise 9: Work with a Dynamically Rendered Element",
+            objective: "Interact with an expanding disclosure element and assert dynamic DOM mounting without manual sleeps.",
+            prerequisites: ["Playwright auto-waiting", "Web-first assertions"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 9: Work with dynamically rendered element", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Click 'Show stable locator tradeoff' button
+  // TODO: Assert explanation text becomes visible without sleep
+});`,
+            task: "Click 'Show stable locator tradeoff' and assert the unmounted paragraph renders into the DOM.",
+            acceptanceCriteria: [
+              "Asserts text count is initially 0",
+              "Clicks disclosure button",
+              "Uses await expect(text).toBeVisible() without sleeps"
+            ],
+            expectedBehavior: "Web-first assertion polls until the React component updates state and mounts the text.",
+            hint: "The text starts with 'Prefer role, label, and placeholder over a test id.'",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 9: Work with dynamically rendered element", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const tradeoffText = page.getByText("Prefer role, label, and placeholder over a test id.");
+  await expect(tradeoffText).toHaveCount(0);
+
+  const disclosureButton = page.getByRole("button", { name: "Show stable locator tradeoff" });
+  await disclosureButton.click();
+  await expect(tradeoffText).toBeVisible();
+});`,
+            troubleshootingNotes: "Never insert page.waitForTimeout() when waiting for state updates. Web-first assertions auto-wait.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 9'"
+          },
+          {
+            id: "ex10-senior-debug",
+            title: "Exercise 10: Complete a Senior-Level Locator Debugging Challenge",
+            objective: "Diagnose intentional accessibility defects and inspect hidden element behavior.",
+            prerequisites: ["Accessibility tree inspection", "Hidden element mechanics"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 10: Senior locator debugging challenge", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Diagnose missing label association in 'Missing association' region
+  // TODO: Diagnose mismatched htmlFor/id in 'Mismatched association' region
+  // TODO: Compare getByRole count vs raw DOM query count for 'Save' buttons
+});`,
+            task: "Verify that broken label associations return 0 elements with getByLabel, and that getByRole excludes hidden elements unlike raw DOM queries.",
+            acceptanceCriteria: [
+              "Verifies missing label produces 0 count in getByLabel",
+              "Verifies mismatched htmlFor produces 0 count",
+              "Verifies getByRole finds 2 visible Saves while raw DOM finds 3"
+            ],
+            expectedBehavior: "All three architectural defect assertions confirm the behavior of the accessibility tree.",
+            hint: "Inspect regions 'Missing association' and 'Mismatched association', and compare page.getByRole('button', { name: 'Save' }) with page.locator('button:text-is(\"Save\")').",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 10: Senior locator debugging challenge", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const missingAssocRegion = page.getByRole("region", { name: "Missing association" });
+  await expect(missingAssocRegion.getByLabel("Employee name")).toHaveCount(0);
+  await expect(missingAssocRegion.getByRole("textbox")).toBeVisible();
+
+  const mismatchedRegion = page.getByRole("region", { name: "Mismatched association" });
+  await expect(mismatchedRegion.getByLabel("Badge number")).toHaveCount(0);
+  await expect(mismatchedRegion.locator("#actual-badge")).toBeVisible();
+
+  const accessibleSaves = page.getByRole("button", { name: "Save" });
+  await expect(accessibleSaves).toHaveCount(2);
+
+  const rawDomSaves = page.locator('button:text-is("Save")');
+  await expect(rawDomSaves).toHaveCount(3);
+});`,
+            troubleshootingNotes: "This exercise demonstrates why Playwright's semantic locators reflect genuine accessibility defects that raw DOM queries miss.",
+            command: "pnpm exec playwright test e2e/practice-locators.spec.ts -g 'Exercise 10'"
+          }
+        ],
+        knowledgeCheck: [
+          {
+            id: "kc-locator-lazy",
+            topic: "Locator Architecture & Evaluation",
+            question: "When does Playwright execute DOM queries and communicate with the browser for a locator created via const btn = page.getByRole('button', { name: 'Submit' })?",
+            options: [
+              "Immediately when page.getByRole() is called.",
+              "Synchronously during script compilation before test execution starts.",
+              "Lazily at the exact moment an action (e.g. .click()) or web-first assertion (e.g. expect(btn).toBeVisible()) is called.",
+              "Only when the page finishes the 'load' lifecycle event."
+            ],
+            correctOptionIndex: 2,
+            explanation: "Playwright locators are evaluated lazily. Creating a locator merely defines a query recipe in Node.js memory. The browser DOM is queried only when an action or assertion executes."
+          },
+          {
+            id: "kc-locator-priority",
+            topic: "Semantic Locator Hierarchy",
+            question: "According to Playwright's recommended locator hierarchy, which locator strategy should be prioritized when testing a primary call-to-action button?",
+            options: [
+              "page.locator('button.btn-primary.submit-btn')",
+              "page.getByRole('button', { name: 'Submit Order' })",
+              "page.getByTestId('submit-order-button')",
+              "page.locator('//button[text()=\"Submit Order\"]')"
+            ],
+            correctOptionIndex: 1,
+            explanation: "page.getByRole() is the gold standard because it queries the W3C Accessibility Tree. It guarantees that the button is semantically accessible to screen readers and survives CSS rewrites."
+          },
+          {
+            id: "kc-accessible-name",
+            topic: "Accessible Name Computation",
+            question: "How does Playwright determine whether page.getByRole('button', { name: 'Save' }) matches an element with <button aria-label='Save Record'>Save</button>?",
+            options: [
+              "It checks innerText first, so it matches 'Save'.",
+              "It checks aria-label first, which computes the accessible name as 'Save Record'. By default, substring matching succeeds since 'Save' is contained in 'Save Record'.",
+              "It throws a syntax error because aria-label and innerText cannot coexist.",
+              "It fails because exact matching is always enforced for aria-label."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Under W3C accessible name computation, aria-label takes precedence over innerText. By default, Playwright uses substring matching, so { name: 'Save' } matches 'Save Record'. If { exact: true } was set, it would require 'Save Record'."
+          },
+          {
+            id: "kc-strict-mode",
+            topic: "Strict Mode Violations",
+            question: "Why does calling await page.getByRole('button', { name: 'Edit' }).click() throw an error when two visible Edit buttons exist on the page?",
+            options: [
+              "Playwright has an internal bug when dealing with duplicate text.",
+              "Playwright enforces Strict Mode by default on single-element actions, failing immediately to prevent clicking the wrong element.",
+              "Buttons named 'Edit' are reserved keywords in Playwright.",
+              "The browser requires a 500ms delay between finding duplicate buttons."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Playwright Strict Mode throws an error when a single-element action resolves to multiple elements. Unlike Selenium which silently clicks the first match, Playwright forces test authors to disambiguate semantically."
+          },
+          {
+            id: "kc-container-scoping",
+            topic: "Container Scoping & Disambiguation",
+            question: "What is the recommended architectural pattern to click the 'Delete' button for a specific table row containing user 'Alice Chen'?",
+            options: [
+              "page.getByRole('button', { name: 'Delete' }).first().click()",
+              "page.locator('table tr:nth-child(3) button.btn-danger').click()",
+              "page.getByRole('row').filter({ hasText: 'Alice Chen' }).getByRole('button', { name: 'Delete' }).click()",
+              "page.keyboard.press('Tab') until the Delete button is reached"
+            ],
+            correctOptionIndex: 2,
+            explanation: "Container filtering (.filter({ hasText: 'Alice Chen' })) scopes the query to the specific row. Positional indexing (.first() or nth-child) breaks whenever table rows sort or paginate."
+          },
+          {
+            id: "kc-hidden-elements",
+            topic: "Hidden Elements in Accessibility Tree",
+            question: "How does page.getByRole('button', { name: 'Save' }) behave when the page contains 2 visible Save buttons and 1 Save button inside <div hidden>?",
+            options: [
+              "It throws a strict mode violation error for 3 elements.",
+              "It resolves only the 2 visible Save buttons because getByRole automatically excludes elements with display:none or the hidden attribute.",
+              "It fails to execute because hidden elements corrupt the accessibility tree.",
+              "It clicks the hidden button automatically."
+            ],
+            correctOptionIndex: 1,
+            explanation: "By default, getByRole filters out non-rendered/hidden elements. To include hidden elements, you must pass { includeHidden: true }."
+          },
+          {
+            id: "kc-shadow-dom",
+            topic: "Shadow DOM Locator Behavior",
+            question: "How does Playwright handle elements rendered inside an open Shadow DOM root (<my-component> -> #shadow-root (open) -> <button>Submit</button>)?",
+            options: [
+              "You must call page.evaluate() with shadowRoot.querySelector.",
+              "Playwright pierces open Shadow DOM roots automatically for user-facing locators without special configuration.",
+              "You must install the @playwright/shadow-dom plugin.",
+              "Shadow DOM elements cannot be tested with Playwright."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Playwright's selector engine automatically pierces open Shadow DOM boundaries by default. Standard locators like page.getByRole('button', { name: 'Submit' }) find elements inside shadow trees seamlessly."
+          },
+          {
+            id: "kc-locator-and-or",
+            topic: "Locator Composition (.and / .or)",
+            question: "When is locator.or() particularly valuable in enterprise test automation?",
+            options: [
+              "To speed up locator evaluation by running queries in separate threads.",
+              "To handle non-deterministic branching, such as an A/B test or accepting either a 'Welcome' banner or a 'Dashboard' heading.",
+              "To bypass Playwright strict mode errors without fixing them.",
+              "To force CSS selectors to take priority over role locators."
+            ],
+            correctOptionIndex: 1,
+            explanation: "locator.or() combines two locators into a logical union. It is invaluable for handling legitimate UI variations, such as A/B testing variants or pages that display either an empty-state banner or a data table."
+          },
+          {
+            id: "kc-anti-pattern-refactor",
+            topic: "Refactoring & Diagnostic Anti-Patterns",
+            question: "A test fails with 'waiting for getByLabel(\"Employee Name\") to be visible' even though the user visibly sees '<label>Employee Name</label><input id=\"emp-name\">'. What is the root cause?",
+            options: [
+              "The label is missing the 'htmlFor' attribute linking it to the input's 'id', so the browser does not associate them in the accessibility tree.",
+              "getByLabel only supports email inputs.",
+              "The input must have a placeholder attribute to be found by getByLabel.",
+              "Playwright requires all label text to be lowercase."
+            ],
+            correctOptionIndex: 0,
+            explanation: "This is a real accessibility bug. Without htmlFor='emp-name' (or wrapping the input inside the <label>), the browser cannot establish an accessible association. getByLabel correctly fails, flagging a defect."
           }
         ],
         practiceTask: {
@@ -1244,89 +2190,1158 @@ test("exercises semantic locators in locator gym", async ({ page }) => {
   await page.getByTestId("stable-action").click();
   await expect(page.getByRole("status").filter({ hasText: "Check finished" })).toBeVisible();
 });`,
-          playwrightCommand: "npx playwright test e2e/locators.spec.ts -g 'uses role, label'"
+          playwrightCommand: "pnpm exec playwright test e2e/locators.spec.ts -g 'uses role, label'"
         },
         interviewQuestions: [
+          {
+            question: "Why did the Playwright team introduce the Locator abstraction instead of sticking with ElementHandle?",
+            answer: "ElementHandles in Puppeteer and Selenium hold direct in-memory references to DOM nodes. If a modern reactive framework (React, Vue, Svelte) re-renders or updates state, that node is detached from the DOM, throwing 'StaleElementReferenceException'. A Playwright Locator is a query recipe that is evaluated lazily at the moment of action, automatically re-querying the fresh DOM without ever throwing stale element errors.",
+            architecturalContext: "Eliminates an entire class of asynchronous timing bugs in modern single-page applications."
+          },
           {
             question: "Why does Playwright enforce Strict Mode by default for locators?",
             answer: "In Selenium, driver.findElement() silently returns the first matching element if a selector matches 5 different DOM nodes. If an application introduces duplicate buttons or layout changes, the test clicks the wrong element without error. Playwright's Strict Mode throws an error immediately if a single-element locator resolves to multiple nodes, forcing the test author to disambiguate semantically.",
             architecturalContext: "Prevents subtle race conditions and test false-positives in enterprise test suites."
+          },
+          {
+            question: "What are the architectural risks of using locator.first() to silence strict mode errors?",
+            answer: "Calling .first() suppresses Playwright's strict mode and masks accidental DOM duplication bugs. When UI components reorder, table rows sort, or responsive variants mount, .first() silently clicks the wrong control. In enterprise test suites, disambiguate using container scoping (e.g. scoping to a dialog, card, or form) or content filtering (.filter({ hasText })).",
+            architecturalContext: "Ensures that tests fail loudly when the UI changes unexpectedly rather than silently corrupting test data."
+          },
+          {
+            question: "How does Playwright's locator engine pierce open Shadow DOM roots, and when does it fail?",
+            answer: "Playwright's selector engine automatically traverses open shadow roots by default for both CSS and user-facing semantic locators (getByRole, getByLabel, etc.). You do not need driver.executeScript or manual shadowRoot handles. However, Playwright cannot pierce closed shadow roots (mode: 'closed') where the browser prohibits external JavaScript from accessing the shadow root.",
+            architecturalContext: "Allows seamless testing of web components and micro-frontends without convoluted workaround code."
           }
         ]
       },
       {
-        id: "strict-mode-and-filtering",
+        id: "playwright-assertions",
         moduleSlug: "locators-and-selectors",
         moduleTitle: "Modern Semantic Locators & Strict Mode",
-        title: "Strict Mode Resolution & Container Filtering",
+        title: "Playwright Assertions and Auto-Waiting — Beginner to Advanced",
         difficulty: "Intermediate",
-        durationMinutes: 25,
-        prerequisites: ["semantic-locators-hierarchy"],
-        summary: "Resolve locator ambiguity and strict-mode violations using container scoping, locator composition, and .filter() predicates.",
+        durationMinutes: 35,
+        prerequisites: [
+          "playwright-introduction",
+          "configuration-and-browsers",
+          "playwright-locators"
+        ],
+        summary: "A comprehensive, progressive masterclass in Playwright's web-first retrying assertions, the actionability auto-waiting engine, timeout hierarchy, soft assertions, eventual consistency, and root-cause debugging of flaky tests.",
         sections: [
           {
-            id: "filtering-concept",
-            title: "Container Scoping & .filter()",
-            content: "When multiple cards or table rows have identical buttons (e.g., 'Edit' or 'Delete'), you should scope the action to the specific container instead of relying on array indices. Playwright provides `locator.filter({ hasText })` and `locator.filter({ has: locator })`."
+            id: "assertion-fundamentals",
+            title: "Part A — Assertion Fundamentals & Diagnostic Architecture",
+            content: `What is an Assertion in Automated Testing?
+An assertion is a verifiable contract and test invariant. It states: 'At this precise point in the user journey, the application state must satisfy this exact condition.' If the condition evaluates to true, the test proceeds uninterrupted. If it evaluates to false, the assertion throws an AssertionError that immediately flags a defect.
+
+The Purpose of expect():
+Playwright exposes a unified, fluent 'expect()' utility imported directly from '@playwright/test'. It wraps either an actual value in Node.js memory (e.g. string, number, object) or a live Playwright Locator that points into the browser DOM.
+
+Actual Values vs. Expected Values:
+In any test assertion:
+- Actual (Received) Value: The real state extracted from the browser or runtime (e.g., current URL, button text, visibility).
+- Expected Value: The anticipated specification defined by requirements (e.g., '/practice/dashboard', 'Welcome, student!').
+When an assertion fails, Playwright generates a clear, colored diagnostic diff contrasting the Received and Expected values alongside the DOM snippet and actionability call log.
+
+Diagnosing Application Defects Through Assertion Errors:
+In legacy frameworks, assertion failures were opaque: 'expected true but found false'. Playwright assertions produce rich, contextual diagnostic reports that pinpoint exactly why an expectation was not met:
+- Did the text match case-insensitively but fail on exact case?
+- Did the locator resolve to 0 elements (timed out)?
+- Did the element exist in the DOM but remain hidden by CSS (display: none)?
+- Was the control disabled when an enabled state was required?
+
+Hard Assertions vs. Soft Assertions:
+1. Hard Assertions (Default): Calling await expect(locator).toBeVisible() halts test execution immediately upon failure. Any remaining lines of the test are skipped. This is critical for foundational prerequisite steps (e.g., if login fails, proceeding to create a user is meaningless).
+2. Soft Assertions (expect.soft()): Calling await expect.soft(locator).toHaveText(...) records the failure but allows test execution to continue. At the end of the test execution, Playwright marks the test as failed and prints all collected errors. Soft assertions are ideal for exhaustive UI auditing (e.g., verifying 10 distinct profile fields or dashboard metrics in a single pass).`
+          },
+          {
+            id: "web-first-assertions",
+            title: "Part B — Web-First Retrying Assertions: Complete Reference",
+            content: `What Makes an Assertion 'Web-First'?
+In web applications, the DOM is asynchronous, dynamic, and non-deterministic. Elements take milliseconds to animate, fetch API responses, or render into the accessibility tree.
+Traditional assertions (such as Chai or Jest) evaluate synchronously once. If the element hasn't finished rendering at that exact microsecond, the assertion fails prematurely.
+Playwright's web-first assertions poll the target locator continuously in a retry loop until the assertion passes or the expect timeout (default: 5,000ms) expires.
+
+Complete Web-First Assertion Reference (16 Core Matchers):
+
+1. await expect(locator).toBeVisible({ timeout }):
+Asserts that the element is attached to the DOM and visible (non-zero bounding box, visibility != hidden, display != none).
+Example: await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+
+2. await expect(locator).toBeHidden({ timeout }):
+Asserts that the element is either detached from the DOM or hidden (e.g. display: none or opacity: 0).
+Example: await expect(page.getByTestId("loading-spinner")).toBeHidden();
+
+3. await expect(locator).toBeAttached({ timeout }):
+Asserts that the element is present in the DOM tree, regardless of whether it is visually visible.
+Example: await expect(page.locator("input[type=file]")).toBeAttached();
+
+4. await expect(locator).toBeEnabled({ timeout }):
+Asserts that the element is not disabled (does not have the 'disabled' attribute or ARIA disabled state).
+Example: await expect(page.getByRole("button", { name: "Submit" })).toBeEnabled();
+
+5. await expect(locator).toBeDisabled({ timeout }):
+Asserts that the element has the 'disabled' attribute or aria-disabled="true".
+Example: await expect(page.getByRole("button", { name: "Submit" })).toBeDisabled();
+
+6. await expect(locator).toBeEditable({ timeout }):
+Asserts that the element is a form input or contenteditable element that is enabled and not read-only.
+Example: await expect(page.getByLabel("Username")).toBeEditable();
+
+7. await expect(locator).toBeChecked({ timeout }):
+Asserts that a checkbox or radio button is checked.
+Example: await expect(page.getByRole("checkbox", { name: "Agree" })).toBeChecked();
+
+8. await expect(locator).toHaveText(expected, { ignoreCase, useInnerText, timeout }):
+Asserts that the element's text content matches the expected string or RegExp. Strips whitespace by default.
+Example: await expect(page.locator("#status")).toHaveText("Completed");
+
+9. await expect(locator).toContainText(expected, { ignoreCase, useInnerText, timeout }):
+Asserts that the element's text contains the substring or matches the RegExp.
+Example: await expect(page.locator("#status")).toContainText("Compl");
+
+10. await expect(locator).toHaveValue(value, { timeout }):
+Asserts that the form control (<input>, <textarea>, <select>) has the specified value.
+Example: await expect(page.getByLabel("Email")).toHaveValue("ada@lab.test");
+
+11. await expect(locator).toHaveAttribute(name, valueOrRegExp, { timeout }):
+Asserts that the element has the DOM attribute with the expected value.
+Example: await expect(page.getByLabel("Search")).toHaveAttribute("placeholder", "Try Playwright");
+
+12. await expect(locator).toHaveClass(classNameOrRegExp, { timeout }):
+Asserts that the element's class attribute contains or matches the specified classes.
+Example: await expect(page.getByTestId("badge")).toHaveClass(/bg-emerald/);
+
+13. await expect(locator).toHaveCount(count, { timeout }):
+Asserts that the locator resolves to exactly the expected number of matching DOM elements.
+Example: await expect(page.getByRole("listitem")).toHaveCount(5);
+
+14. await expect(page).toHaveURL(urlOrRegExp, { timeout }):
+Asserts that the current page URL matches the string, glob, or RegExp. Retries as navigation completes.
+Example: await expect(page).toHaveURL(/.*\\/practice\\/dashboard/);
+
+15. await expect(page).toHaveTitle(titleOrRegExp, { timeout }):
+Asserts that the document title matches the expected string or RegExp.
+Example: await expect(page).toHaveTitle("Industrial Test Lab");
+
+16. await expect(locator).toHaveScreenshot(name, { maxDiffPixels, threshold }):
+Performs pixel-by-pixel visual comparison against a golden snapshot image.
+Example: await expect(page.getByTestId("chart")).toHaveScreenshot("chart-baseline.png");
+
+Negated Assertions and Auto-Retry:
+Every web-first assertion can be inverted with '.not'. The polling loop retries until the negation succeeds or times out:
+await expect(page.getByTestId("loading-overlay")).not.toBeVisible();`
+          },
+          {
+            id: "autowaiting-actionability",
+            title: "Part C — Auto-Waiting Engine & Actionability Checks",
+            content: `The Playwright Actionability Engine:
+Before executing user actions (such as .click(), .fill(), .check(), .selectOption(), .hover(), .dragTo()), Playwright performs a rigorous actionability audit against the target element. It repeats these checks continuously until they all pass:
+
+1. Attached: Element is connected to the active DOM tree (Document or ShadowRoot).
+2. Visible: Element has a non-empty bounding box and is not styled with display: none, visibility: hidden, or opacity: 0.
+3. Stable: Element is not undergoing CSS transitions, layout shifts, or animations (bounding box is constant over two animation frames).
+4. Receives Events: Point hit-testing (elementFromPoint) confirms that the target element's center coordinate is not obstructed by floating banners, modals, overlays, or popups.
+5. Enabled: Element does not possess the 'disabled' attribute or aria-disabled="true".
+
+Actionability Checks vs. Assertions (The Conceptual Difference):
+Engineers frequently confuse actionability checks with assertions:
+- Actionability Checks: Defensive prerequisites performed automatically before an ACTION. For example, button.click() verifies that the button is enabled and unobstructed before sending the pointer event.
+- Assertions: Verifications of test specifications. For example, expect(button).toBeVisible() explicitly asserts the visual presence of the button as part of test criteria.
+
+Why click() and toBeVisible() Solve Different Problems:
+- An element can be 100% visible, but disabled: expect(btn).toBeVisible() passes, but btn.click() auto-waits until the disabled attribute is removed!
+- An element can be visible, but obstructed by a transparent modal overlay: expect(btn).toBeVisible() passes, but btn.click() auto-waits or fails with 'element intercepts pointer events'!
+
+What Happens When an Element is Detached or Constantly Moving:
+If a React component re-renders and replaces the DOM node while Playwright is waiting, Playwright automatically re-queries the locator against the new DOM node.
+If an element is animating continuously (e.g. an infinite CSS rotation or marquee), stability checks may time out. Playwright provides { force: true } as an emergency escape hatch, but in senior automation suites, you should disable CSS animations via config ({ animations: 'disabled' }) rather than forcing clicks.
+
+Why page.waitForTimeout() is an Anti-Pattern:
+Calling page.waitForTimeout(3000) pauses execution unconditionally.
+- On fast local machines, it wastes 3 seconds on every test, ballooning suite execution time.
+- On slow, constrained CI runners, 3 seconds is often not enough, resulting in intermittent test flakiness.
+Always wait for observable application conditions: await expect(locator).toBeVisible() or await page.waitForResponse().`
+          },
+          {
+            id: "timeout-architecture",
+            title: "Part D — Timeout Hierarchy & Diagnostic Analysis",
+            content: `The 5-Tier Timeout Hierarchy in Playwright:
+Playwright configures timeouts with surgical precision across 5 distinct operational boundaries:
+
+1. Global Timeout (globalTimeout):
+- Scope: The entire test suite run across all workers and projects.
+- Default: 0 (No global timeout).
+- Configuration: Set in playwright.config.ts for CI pipelines to prevent stuck runs from consuming billing minutes.
+
+2. Test Timeout (timeout):
+- Scope: The total duration allowed for an individual test function (including before/after hooks).
+- Default: 30,000ms (30 seconds).
+- Configuration: Configured in playwright.config.ts or overridden per-test via test.setTimeout(60_000).
+
+3. Expect Timeout (expect.timeout):
+- Scope: The maximum duration a web-first assertion (e.g. expect(locator).toBeVisible()) will retry.
+- Default: 5,000ms (5 seconds).
+- Configuration: Configured in playwright.config.ts under expect: { timeout: 5000 }, or per-assertion: await expect(locator).toBeVisible({ timeout: 10_000 }).
+
+4. Action Timeout (actionTimeout):
+- Scope: The maximum duration an action method (.click(), .fill(), .press()) will wait for actionability checks to pass.
+- Default: 0ms (Unbounded, capped only by the Test Timeout).
+- Recommendation: Set to 10,000ms in production playwright.config.ts to fail fast when controls are unresponsive.
+
+5. Navigation Timeout (navigationTimeout):
+- Scope: The maximum duration allowed for page.goto(), page.reload(), or navigation-triggering clicks.
+- Default: 0ms (Unbounded, capped by Test Timeout).
+- Recommendation: Set to 15,000ms for enterprise web applications with complex initial bundles.
+
+Timeout Precedence & Interaction Matrix:
+- If a test has a 30s test timeout, and actionTimeout is 10s: a blocked button click fails after 10s, providing a clear actionability error instead of consuming the full 30s test timeout.
+- If expect.timeout is 5s: an assertion polls for up to 5s before throwing an AssertionError with a received vs expected diff.
+
+Diagnosing Timeouts from Error Traces:
+When a timeout occurs, look at the Playwright Error Log:
+- 'Timeout 5000ms exceeded while waiting for expect(locator).toBeVisible()' -> The element never appeared in the DOM or remained hidden.
+- 'Timeout 10000ms exceeded while waiting for locator.click()' -> Check the Call Log sub-steps:
+  * Element is not attached
+  * Element is not visible
+  * Element is not stable
+  * Element intercepts pointer events (e.g. <div class="modal-backdrop"> intercepts pointer events)
+  * Element is disabled`
+          },
+          {
+            id: "advanced-assertion-strategies",
+            title: "Part E — Advanced Assertion Strategies & Eventual Consistency",
+            content: `Mastering Eventual Consistency and Transient UI States:
+Modern web applications interact with microservices, message queues, and WebSockets where data updates with variable latency.
+
+1. expect.poll() for Arbitrary Asynchronous State:
+When verifying state that is not directly exposed as a DOM locator (such as an API response status, database row count, or localStorage key), use expect.poll():
+await expect.poll(async () => {
+  const token = await page.evaluate(() => localStorage.getItem("auth-token"));
+  return token !== null;
+}, {
+  message: "Auth token was never stored in localStorage",
+  timeout: 10_000,
+  intervals: [200, 500, 1000] // Backoff polling intervals
+}).toBe(true);
+
+2. expect.toPass() for Complex Multi-Step Assertions:
+When an entire block of code or multi-step verification must be retried together until all conditions pass:
+await expect(async () => {
+  const response = await page.request.get("/api/orders/latest");
+  expect(response.status()).toBe(200);
+  const data = await response.json();
+  expect(data.status).toBe("PROCESSED");
+}).toPass({
+  timeout: 15_000,
+  intervals: [1000, 2000]
+});
+
+3. Custom Failure Messages:
+Provide clear educational or architectural failure messages when an assertion fails:
+await expect(
+  page.getByRole("alert"),
+  "Critical: Expected form submission error banner to be displayed for invalid input"
+).toBeVisible();
+
+4. Avoiding Premature Assertions:
+A common source of test flakiness is asserting on an element that momentarily appears during a loading cycle:
+// Anti-Pattern: Checking row count while initial skeleton loaders are rendering
+await expect(page.getByRole("row")).toHaveCount(5); // May count skeleton placeholder rows!
+// Resilient Pattern: Wait for loading spinner to detach first
+await expect(page.getByTestId("loading-skeleton")).toBeHidden();
+await expect(page.getByRole("row")).toHaveCount(5);`
+          },
+          {
+            id: "debugging-unreliable-assertions",
+            title: "Part F — Debugging Flaky Assertions & Root Cause Analysis",
+            content: `The Senior SDET Diagnostic Playbook for Unreliable Assertions:
+
+Why Does an Assertion Pass Locally But Fail in CI?
+1. CPU Throttling: CI runners typically have fewer CPU cores (2 vCPUs). Animations and JavaScript execution take 2x to 3x longer. Web-first retrying assertions survive this; synchronous boolean checks fail.
+2. Headless Font Metrics: System fonts render with slightly different bounding boxes in Linux headless environments, occasionally causing text wrapping or unexpected layout shifts.
+3. Network Latency: Local APIs respond in 5ms; remote or containerized test environments experience latency jitter.
+
+Diagnostic Methodology:
+Step 1: Inspect the Playwright HTML Report & Trace:
+Run 'pnpm exec playwright show-trace test-results/.../trace.zip'.
+- Navigate to the exact step where the assertion failed.
+- Inspect the Actionability Call Log.
+- Check the DOM Snapshot 'Before', 'Action', and 'After'.
+
+Step 2: Check for Race Conditions:
+Did the test trigger an action that initiated an asynchronous request, but asserted before the response arrived?
+Always anchor assertions to deterministic UI states:
+await page.getByRole("button", { name: "Save" }).click();
+await expect(page.getByRole("status")).toHaveText("Saved successfully");
+
+Step 3: Check for Strict Mode Ambiguity:
+If the assertion locator resolves to multiple elements, Playwright halts execution. Use container scoping (.filter({ hasText })) to ensure 1-to-1 matching.`
           }
         ],
         codeExamples: [
           {
-            id: "filtering-example",
-            caption: "Disambiguating Table Rows with Container Filtering",
+            id: "example-web-first-basics",
+            caption: "Web-First Assertions: Visibility, Text, Attributes & URL",
             language: "typescript",
-            code: `// Target the 'Edit' button specifically inside the row for 'Alice Chen'
-const targetRow = page
-  .getByRole("row")
-  .filter({ hasText: "Alice Chen" });
+            code: `import { test, expect } from "@playwright/test";
 
-await targetRow.getByRole("button", { name: "Edit" }).click();`,
+test("Web-first assertions on dynamic elements", async ({ page }) => {
+  await page.goto("/lab/locators");
+
+  // 1. Heading visibility with accessible role
+  const heading = page.getByRole("heading", { name: "Stable locators", level: 2 });
+  await expect(heading).toBeVisible();
+
+  // 2. Exact text and substring text matching
+  const lead = page.getByText("Good examples use accessible names.");
+  await expect(lead).toHaveText("Good examples use accessible names. Defects are isolated and labeled. This page does not call the API.");
+  await expect(lead).toContainText("accessible names");
+
+  // 3. Attribute verification (placeholder, type, href)
+  const searchInput = page.getByLabel("Search courses");
+  await expect(searchInput).toHaveAttribute("placeholder", "Try Playwright");
+
+  // 4. URL change assertion
+  await page.getByTitle("Locator gym shortcut").click();
+  await expect(page).toHaveURL(/.*\\/lab\\/locators/);
+});`,
             lineExplanations: [
-              { line: 2, explanation: "Matches all table rows in the DOM." },
-              { line: 3, explanation: "Filters the rows down to the single row containing 'Alice Chen'." },
-              { line: 5, explanation: "Locates the 'Edit' button strictly within that filtered container." }
+              { line: 9, explanation: "toBeVisible() auto-retries over expect timeout until element mounts and becomes visible." },
+              { line: 13, explanation: "toHaveText() compares normalized inner text; toContainText() verifies substring presence." },
+              { line: 18, explanation: "toHaveAttribute() checks DOM properties without evaluating raw JavaScript." },
+              { line: 22, explanation: "toHaveURL() automatically retries until client-side routing finishes." }
+            ]
+          },
+          {
+            id: "example-form-validations",
+            caption: "Form State Assertions: Values, Checked, Disabled & Enabled",
+            language: "typescript",
+            code: `import { test, expect } from "@playwright/test";
+
+test("Form controls value and checked state verification", async ({ page }) => {
+  await page.goto("/lab/forms");
+
+  const nameInput = page.getByLabel("Full name");
+  await nameInput.fill("Ada Lovelace");
+  // Assert input value
+  await expect(nameInput).toHaveValue("Ada Lovelace");
+
+  const termsCheckbox = page.getByRole("checkbox", { name: "I agree to the lab terms" });
+  // Verify initial unchecked state
+  await expect(termsCheckbox).not.toBeChecked();
+
+  // Check and verify
+  await termsCheckbox.check();
+  await expect(termsCheckbox).toBeChecked();
+
+  // Assert submit button is enabled
+  const submitBtn = page.getByRole("button", { name: "Submit intake" });
+  await expect(submitBtn).toBeEnabled();
+});`,
+            lineExplanations: [
+              { line: 9, explanation: "toHaveValue() asserts input control values (not DOM attributes)." },
+              { line: 13, explanation: "not.toBeChecked() negates the matcher and polls until unchecked." },
+              { line: 17, explanation: "toBeChecked() confirms both native checked property and aria-checked attribute." },
+              { line: 21, explanation: "toBeEnabled() validates element is clickable and not disabled." }
+            ]
+          },
+          {
+            id: "example-actionability-autowait",
+            caption: "Actionability Auto-Waiting on Delayed Controls",
+            language: "typescript",
+            code: `import { test, expect } from "@playwright/test";
+
+test("Actionability engine waits for button to become enabled", async ({ page }) => {
+  await page.goto("/lab/flaky");
+
+  // Dismiss blocking overlay
+  await page.getByLabel("Dismiss Overlay").click();
+  await expect(page.getByTestId("floating-interceptor")).not.toBeVisible();
+
+  const delayedBtn = page.getByRole("button", { name: "Execute Delayed Action" });
+
+  // Playwright action auto-waits for actionability checks:
+  // 1. Attached, 2. Visible, 3. Stable, 4. Receives Events, 5. Enabled!
+  // The button starts disabled for 1200ms; click() automatically waits!
+  await delayedBtn.click();
+
+  // Verify resulting feedback
+  const result = page.locator("#actionability-result");
+  await expect(result).toBeVisible();
+  await expect(result).toContainText("Action successfully executed after actionability wait");
+});`,
+            lineExplanations: [
+              { line: 8, explanation: "Dismiss blocking overlay so hit-testing succeeds." },
+              { line: 16, explanation: "delayedBtn.click() automatically polls actionability checks up to actionTimeout." },
+              { line: 20, explanation: "Web-first assertion confirms resulting feedback banner is visible." }
+            ]
+          },
+          {
+            id: "example-advanced-poll-topass",
+            caption: "Eventual Consistency: expect.poll() and expect.toPass()",
+            language: "typescript",
+            code: `import { test, expect } from "@playwright/test";
+
+test("Poll asynchronous storage and retry complex multi-step validations", async ({ page }) => {
+  await page.goto("/practice/login");
+
+  // Login
+  await page.getByLabel("Practice Username").fill("student");
+  await page.getByLabel("Practice Password").fill("Password123!");
+  await page.getByRole("button", { name: "Sign In" }).click();
+
+  // 1. expect.poll(): Poll client localStorage until token exists
+  await expect.poll(async () => {
+    return await page.evaluate(() => localStorage.getItem("pil-practice-token"));
+  }, {
+    message: "Expected auth token to be stored in localStorage after successful sign-in",
+    timeout: 5000,
+    intervals: [200, 500]
+  }).not.toBeNull();
+
+  // 2. expect.toPass(): Retrying multi-step verification block
+  await expect(async () => {
+    await expect(page.getByRole("heading", { name: "Welcome, student!" })).toBeVisible();
+    await expect(page.getByTestId("session-info")).toBeVisible();
+  }).toPass({ timeout: 5000 });
+});`,
+            lineExplanations: [
+              { line: 13, explanation: "expect.poll() polls non-DOM async return values with custom intervals." },
+              { line: 22, explanation: "expect.toPass() executes multi-step assertion blocks until all pass without error." }
+            ]
+          },
+          {
+            id: "example-soft-assertions",
+            caption: "Soft Assertions: Full Audit Without Early Termination",
+            language: "typescript",
+            code: `import { test, expect } from "@playwright/test";
+
+test("Exhaustive UI audit using soft assertions", async ({ page }) => {
+  await page.goto("/lab/locators");
+
+  // Hard assertion: Page must load and render main header first
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+
+  // Soft assertions: Collect all UI validation errors without stopping early
+  await expect.soft(page.getByRole("heading", { name: "Stable locators" })).toBeVisible();
+  await expect.soft(page.getByLabel("Search courses")).toHaveAttribute("placeholder", "Try Playwright");
+  await expect.soft(page.getByRole("button", { name: "Run check" })).toBeEnabled();
+  await expect.soft(page.getByTitle("Locator gym shortcut")).toHaveAttribute("href", "/lab/locators");
+
+  // If any soft assertion failed, test will fail at conclusion with complete report
+  expect(test.info().errors).toHaveLength(0);
+});`,
+            lineExplanations: [
+              { line: 7, explanation: "Hard assertion ensures primary DOM container is rendered before auditing." },
+              { line: 10, explanation: "expect.soft() logs failures but continues evaluating subsequent checks." },
+              { line: 16, explanation: "test.info().errors contains all accumulated soft assertion failure records." }
+            ]
+          },
+          {
+            id: "example-custom-timeout-messages",
+            caption: "Custom Diagnostic Messages and Timeout Overrides",
+            language: "typescript",
+            code: `import { test, expect } from "@playwright/test";
+
+test("Custom diagnostic messages and explicit timeout overrides", async ({ page }) => {
+  await page.goto("/lab/locators");
+
+  const searchInput = page.getByLabel("Search courses");
+
+  // Custom failure message displays in CI logs if assertion times out
+  await expect(
+    searchInput,
+    "CRITICAL: Course search input was not found or failed to render within 3000ms"
+  ).toBeVisible({ timeout: 3000 });
+
+  // Custom timeout override for slow asynchronous network operations
+  await expect(
+    page.getByRole("button", { name: "Run check" }),
+    "Action check button must be enabled for interaction"
+  ).toBeEnabled({ timeout: 4000 });
+});`,
+            lineExplanations: [
+              { line: 9, explanation: "Passing a custom string as second argument replaces generic error with clear domain diagnostics." },
+              { line: 12, explanation: "{ timeout: 3000 } overrides the default 5000ms expect timeout for this specific check." }
             ]
           }
         ],
         commonMistakes: [
           {
-            title: "Relying on .nth(index) to click list items",
-            badPractice: `page.getByRole("listitem").nth(2).getByRole("button").click();`,
-            goodPractice: `page.getByRole("listitem").filter({ hasText: "Target Item" }).getByRole("button").click();`,
-            explanation: "Positional indexing breaks as soon as items are sorted, paginated, or inserted asynchronously."
+            title: "Synchronous Boolean Check vs Web-First Assertion",
+            badPractice: "const isVisible = await page.getByRole('button').isVisible();\nexpect(isVisible).toBe(true);",
+            goodPractice: "await expect(page.getByRole('button')).toBeVisible();",
+            explanation: "Calling isVisible() evaluates the DOM once at that instant and returns a boolean. If the element is still animating or fetching data, it returns false immediately. Web-first toBeVisible() retries over 5000ms until the element renders."
+          },
+          {
+            title: "Evaluating Raw innerText vs Retrying toHaveText",
+            badPractice: "const text = await page.locator('#status').innerText();\nexpect(text).toBe('Completed');",
+            goodPractice: "await expect(page.locator('#status')).toHaveText('Completed');",
+            explanation: "Reading innerText() once captures an instantaneous snapshot. If the backend API updates the status text 200ms later, the test fails. toHaveText() auto-retries until the text matches."
+          },
+          {
+            title: "Unconditional Fixed Sleep (waitForTimeout) Anti-Pattern",
+            badPractice: "await page.waitForTimeout(3000);\nawait page.getByRole('button', { name: 'Save' }).click();",
+            goodPractice: "const saveBtn = page.getByRole('button', { name: 'Save' });\nawait expect(saveBtn).toBeEnabled();\nawait saveBtn.click();",
+            explanation: "Fixed sleeps slow down test suites unnecessarily and fail on slow CI machines. Waiting for an observable condition (toBeEnabled) proceeds immediately when ready."
+          },
+          {
+            title: "Missing 'await' Keyword in Front of Expect",
+            badPractice: "// DANGEROUS BUG: Missing await\nexpect(page.getByRole('button')).toBeVisible();",
+            goodPractice: "await expect(page.getByRole('button')).toBeVisible();",
+            explanation: "Web-first assertions return a Promise. Omitting 'await' causes the assertion to run asynchronously in the background. The test passes prematurely and uncaught promise rejections crash the test runner."
+          },
+          {
+            title: "Premature Negative Assertion Before Animation Begins",
+            badPractice: "// Close modal and immediately assert hidden\nawait page.getByLabel('Close').click();\nawait expect(page.getByRole('dialog')).toBeHidden();",
+            goodPractice: "await page.getByLabel('Close').click();\n// Explicitly verify modal is removed from accessibility tree\nawait expect(page.getByRole('dialog')).not.toBeVisible();",
+            explanation: "If modal fade-out animation takes 300ms, asserting immediately can fail if not properly retrying or if testing detached vs hidden state incorrectly."
+          },
+          {
+            title: "Overusing Soft Assertions on Critical Prerequisite Steps",
+            badPractice: "await expect.soft(page).toHaveURL('/login'); // If login fails, test still tries to click dashboard!\nawait page.getByRole('button', { name: 'Create Project' }).click();",
+            goodPractice: "await expect(page).toHaveURL('/login'); // Hard assertion on prerequisite\nawait page.getByRole('button', { name: 'Sign In' }).click();\n// Soft assertions on resulting dashboard widgets\nawait expect.soft(page.getByTestId('stat-users')).toBeVisible();",
+            explanation: "Soft assertions should only be used on non-critical validations. If an authentication step fails, subsequent steps will fail with cascading, unhelpful errors."
+          }
+        ],
+        playground: {
+          title: "Interactive Assertions & Auto-Waiting Matrix",
+          configExample: `// Playwright Web-First Assertions & Actionability Pipeline
+// 1. Actionability Engine (Automatic Waiting before Actions):
+//    Attached -> Visible -> Stable -> Receives Events -> Enabled
+await page.getByRole("button", { name: "Submit" }).click();
+
+// 2. Web-First Retrying Assertions (Polls until condition passes or timeout):
+await expect(page.getByRole("status")).toHaveText("Success", { timeout: 5000 });
+await expect(page.getByTestId("loading")).toBeHidden();
+
+// 3. Advanced Eventual Consistency:
+await expect.poll(() => fetchStatus(), { timeout: 10000 }).toBe(200);
+await expect.soft(page.getByRole("heading")).toBeVisible();`,
+          properties: [
+            {
+              name: "toBeVisible()",
+              type: "DOM Visibility",
+              defaultValue: "5,000ms expect timeout",
+              description: "Retries until element is attached to DOM and has non-zero bounding box without display:none or visibility:hidden.",
+              impact: "Gold standard for asserting visual presence. Eliminates flaky rendering races."
+            },
+            {
+              name: "toBeHidden()",
+              type: "DOM Invisibility",
+              defaultValue: "5,000ms expect timeout",
+              description: "Retries until element is detached from DOM or styled with display:none or visibility:hidden.",
+              impact: "Verifies modals dismiss, loading spinners disappear, and alerts close."
+            },
+            {
+              name: "toBeEnabled() / toBeDisabled()",
+              type: "Control State",
+              defaultValue: "5,000ms expect timeout",
+              description: "Retries until form controls or buttons toggle disabled attribute or ARIA disabled property.",
+              impact: "Prevents double-click bugs and verifies form validation rules."
+            },
+            {
+              name: "toHaveText() / toContainText()",
+              type: "Text Verification",
+              defaultValue: "5,000ms expect timeout",
+              description: "Retries until element text matches exact string/RegExp or contains specified substring.",
+              impact: "Handles asynchronous WebSocket and REST API updates smoothly."
+            },
+            {
+              name: "toHaveValue()",
+              type: "Form State",
+              defaultValue: "5,000ms expect timeout",
+              description: "Retries until input, textarea, or select control has the specified value.",
+              impact: "Validates typing, mask formatting, and autocomplete population."
+            },
+            {
+              name: "toBeChecked()",
+              type: "Checkbox/Radio State",
+              defaultValue: "5,000ms expect timeout",
+              description: "Retries until checkbox or radio button satisfies checked state or aria-checked.",
+              impact: "Ensures agreement terms, toggles, and filters reflect user actions."
+            },
+            {
+              name: "toHaveURL()",
+              type: "Navigation State",
+              defaultValue: "5,000ms expect timeout",
+              description: "Retries until browser location URL matches expected string, glob, or RegExp.",
+              impact: "Confirms client-side SPA routing and authentication redirects complete."
+            },
+            {
+              name: "expect.poll()",
+              type: "Async Poller",
+              defaultValue: "Customizable intervals",
+              description: "Polls arbitrary asynchronous function (localStorage, API, database) until matcher succeeds.",
+              impact: "Enables testing eventual consistency outside of DOM locator queries."
+            },
+            {
+              name: "expect.soft()",
+              type: "Non-Fatal Assertion",
+              defaultValue: "Continues on failure",
+              description: "Records assertion failure without terminating test execution early.",
+              impact: "Enables comprehensive multi-point audits and screenshot verifications in a single test run."
+            }
+          ],
+          behaviorComparison: [
+            {
+              aspect: "toBeVisible() vs isVisible()",
+              defaultBehavior: "await expect(locator).toBeVisible() retries over 5000ms until element animates into view or loads.",
+              customizedBehavior: "expect(await locator.isVisible()).toBe(true) runs once immediately, failing if element takes 50ms to mount."
+            },
+            {
+              aspect: "toHaveText() vs innerText()",
+              defaultBehavior: "await expect(locator).toHaveText('Active') automatically polls and retries against fresh DOM nodes.",
+              customizedBehavior: "expect(await locator.innerText()).toBe('Active') captures snapshot at single millisecond; fails on delayed API."
+            },
+            {
+              aspect: "Action Auto-Wait vs Manual Wait",
+              defaultBehavior: "locator.click() automatically audits: Attached, Visible, Stable, Receives Events, and Enabled.",
+              customizedBehavior: "Manual waitForSelector() before clicks adds redundant code and fails to verify hit-target obstruction."
+            },
+            {
+              aspect: "Observable Polling vs Fixed Sleep",
+              defaultBehavior: "await expect(btn).toBeEnabled() proceeds the exact millisecond state transitions (e.g. in 240ms).",
+              customizedBehavior: "page.waitForTimeout(3000) wastes 3 seconds on fast machines and still fails when CI takes 3100ms."
+            }
+          ],
+          practiceTask: "Explore /lab/flaky and /lab/forms. Test delayed button actionability, inspect DOM replacement, verify form values, and eliminate arbitrary sleeps.",
+          localCommand: "pnpm exec playwright test e2e/practice-assertions.spec.ts"
+        },
+        exercises: [
+          {
+            id: "ex1-heading-visible",
+            title: "Exercise 1: Assert that a Heading is Visible",
+            objective: "Assert the visibility of primary and section headings using web-first retrying assertions.",
+            prerequisites: ["Playwright test runner knowledge", "Lab running at /lab/locators"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 1: Assert heading is visible", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Assert level-1 heading is visible
+  // TODO: Assert level-2 heading 'Stable locators' is visible
+});`,
+            task: "Verify that the main level-1 heading and the 'Stable locators' level-2 heading are visible using await expect(locator).toBeVisible().",
+            acceptanceCriteria: [
+              "Uses page.getByRole('heading')",
+              "Applies web-first await expect(heading).toBeVisible()",
+              "Verifies both h1 and h2 headings"
+            ],
+            expectedBehavior: "Playwright queries the accessibility tree and confirms both headings are visible, retrying automatically if rendering is delayed.",
+            hint: "Use getByRole('heading', { name: 'Stable locators', level: 2 }).",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 1: Assert heading is visible", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const heading = page.getByRole("heading", {
+    name: "Choose a locator that survives a redesign.",
+    level: 1,
+  });
+  await expect(heading).toBeVisible();
+
+  const sectionHeading = page.getByRole("heading", {
+    name: "Stable locators",
+    level: 2,
+  });
+  await expect(sectionHeading).toBeVisible();
+});`,
+            troubleshootingNotes: "Ensure you include 'await' in front of expect(); omitting await causes uncaught promise rejections.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 1'"
+          },
+          {
+            id: "ex2-exact-partial-text",
+            title: "Exercise 2: Assert Exact Text and Partial Text",
+            objective: "Differentiate between exact normalized text comparison and substring text matching.",
+            prerequisites: ["Understanding of toHaveText vs toContainText", "Locator Gym at /lab/locators"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 2: Assert exact and partial text", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const description = page.getByText("Good examples use accessible names.");
+  // TODO: Assert exact text match using toHaveText
+  // TODO: Assert partial text match using toContainText
+});`,
+            task: "Assert the exact text of the lead paragraph using toHaveText() and verify key substrings using toContainText().",
+            acceptanceCriteria: [
+              "Uses toHaveText() for complete paragraph comparison",
+              "Uses toContainText() for substring assertions ('accessible names')",
+              "Zero manual string trimming or innerText calls"
+            ],
+            expectedBehavior: "Playwright normalizes whitespace and verifies that the text matches both the exact requirement and substring constraints.",
+            hint: "toContainText('accessible names') will pass as long as the substring exists inside the element.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 2: Assert exact and partial text", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const descriptionText = page.getByText("Good examples use accessible names.");
+  await expect(descriptionText).toHaveText(
+    "Good examples use accessible names. Defects are isolated and labeled. This page does not call the API."
+  );
+  await expect(descriptionText).toContainText("accessible names");
+  await expect(descriptionText).toContainText("isolated and labeled");
+});`,
+            troubleshootingNotes: "toHaveText matches the entire text content; use toContainText if you only care about dynamic snippets.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 2'"
+          },
+          {
+            id: "ex3-form-values-checked",
+            title: "Exercise 3: Validate Form Values and Checked States",
+            objective: "Assert form control values using toHaveValue() and toggle states using toBeChecked().",
+            prerequisites: ["Form validation semantics", "Forms Lab at /lab/forms"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 3: Validate form values and checked states", async ({ page }) => {
+  await page.goto("/lab/forms");
+  // TODO: Fill 'Full name' input and assert value using toHaveValue()
+  // TODO: Verify 'I agree to the lab terms' checkbox state toggling using toBeChecked()
+});`,
+            task: "Fill the 'Full name' input, assert its value using toHaveValue(), and verify that the terms checkbox transitions between unchecked and checked states.",
+            acceptanceCriteria: [
+              "Uses toHaveValue('Ada Lovelace')",
+              "Asserts initial state with not.toBeChecked()",
+              "Checks box and asserts toBeChecked()",
+              "Unchecks box and asserts not.toBeChecked()"
+            ],
+            expectedBehavior: "Input value is verified via the control property, and checkbox checked states are affirmed without checking raw attributes.",
+            hint: "Use await expect(termsCheckbox).not.toBeChecked() for the initial state.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 3: Validate form values and checked states", async ({ page }) => {
+  await page.goto("/lab/forms");
+  const fullNameInput = page.getByLabel("Full name");
+  await fullNameInput.fill("Ada Lovelace");
+  await expect(fullNameInput).toHaveValue("Ada Lovelace");
+
+  const termsCheckbox = page.getByRole("checkbox", { name: "I agree to the lab terms" });
+  await expect(termsCheckbox).not.toBeChecked();
+
+  await termsCheckbox.check();
+  await expect(termsCheckbox).toBeChecked();
+
+  await termsCheckbox.uncheck();
+  await expect(termsCheckbox).not.toBeChecked();
+});`,
+            troubleshootingNotes: "Do not use toHaveAttribute('value', ...) for dynamic input values; the HTML value attribute only reflects initial defaultValue.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 3'"
+          },
+          {
+            id: "ex4-disabled-enabled-buttons",
+            title: "Exercise 4: Verify Disabled and Enabled Buttons",
+            objective: "Verify that a button begins disabled and transitions to enabled without manual sleeps.",
+            prerequisites: ["Actionability engine understanding", "Flaky Lab at /lab/flaky"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 4: Verify disabled and enabled buttons", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  await page.getByLabel("Dismiss Overlay").click();
+  // TODO: Assert button is initially disabled or wait for it to become enabled
+  // TODO: Click button once enabled and verify feedback
+});`,
+            task: "Verify that 'Execute Delayed Action' button auto-waits for its enabled state, click it, and assert the resulting confirmation message.",
+            acceptanceCriteria: [
+              "Dismisses floating interceptor overlay",
+              "Asserts toBeEnabled() on the delayed button",
+              "Clicks button and asserts feedback text with toHaveText()"
+            ],
+            expectedBehavior: "Playwright retries toBeEnabled() until the 1200ms timer expires, then clicks and confirms feedback.",
+            hint: "await expect(delayedBtn).toBeEnabled() automatically retries until the timer finishes.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 4: Verify disabled and enabled buttons", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  await page.getByLabel("Dismiss Overlay").click();
+  await expect(page.getByTestId("floating-interceptor")).not.toBeVisible();
+
+  const delayedBtn = page.getByRole("button", { name: "Execute Delayed Action" });
+  await expect(delayedBtn).toBeEnabled();
+
+  await delayedBtn.click();
+  await expect(page.locator("#actionability-result")).toHaveText(
+    /Action successfully executed after actionability wait/
+  );
+});`,
+            troubleshootingNotes: "Make sure to dismiss the blocking overlay first; otherwise actionability hit-testing fails.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 4'"
+          },
+          {
+            id: "ex5-url-change-navigation",
+            title: "Exercise 5: Assert a URL Change After Navigation",
+            objective: "Assert client-side URL redirects and destination page authentication states.",
+            prerequisites: ["Practice Login at /practice/login"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 5: Assert URL change after navigation", async ({ page }) => {
+  await page.goto("/practice/login");
+  // TODO: Fill credentials (student / Password123!) and submit
+  // TODO: Assert URL changes to /practice/dashboard
+  // TODO: Assert welcome message is visible
+});`,
+            task: "Log in through /practice/login, assert that page URL updates to /practice/dashboard via toHaveURL(), and verify authenticated dashboard content.",
+            acceptanceCriteria: [
+              "Fills Practice Username and Practice Password",
+              "Submits login form",
+              "Uses await expect(page).toHaveURL(/.*\\/practice\\/dashboard/)",
+              "Asserts welcome message heading is visible"
+            ],
+            expectedBehavior: "Playwright retries toHaveURL() as SPA navigation finishes and asserts dashboard components.",
+            hint: "Pass a RegExp like /.*\\/practice\\/dashboard/ to toHaveURL() to be resilient to hostnames and query params.",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 5: Assert URL change after navigation", async ({ page }) => {
+  await page.goto("/practice/login");
+  await page.getByLabel("Practice Username").fill("student");
+  await page.getByLabel("Practice Password").fill("Password123!");
+  await page.getByRole("button", { name: "Sign In" }).click();
+
+  await expect(page).toHaveURL(/.*\\/practice\\/dashboard/);
+  await expect(
+    page.getByRole("heading", { name: "Welcome, student!", level: 1 })
+  ).toBeVisible();
+  await expect(page.getByTestId("session-info")).toBeVisible();
+});`,
+            troubleshootingNotes: "Do not use page.url() === '...'; page.url() is synchronous and does not wait for asynchronous client navigation.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 5'"
+          },
+          {
+            id: "ex6-wait-async-content",
+            title: "Exercise 6: Wait for Asynchronous Content Using a Web-First Assertion",
+            objective: "Handle dynamic DOM replacement and state updates using auto-retrying assertions.",
+            prerequisites: ["DOM replacement lifecycle", "Flaky Lab at /lab/flaky"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 6: Wait for asynchronous content", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  await page.getByLabel("Dismiss Overlay").click();
+  // TODO: Assert initial text of #dynamic-target
+  // TODO: Click 'Trigger DOM Replacement'
+  // TODO: Assert text updates to 'DOM Node Generation #2'
+});`,
+            task: "Assert initial DOM target text, trigger DOM unmounting/replacement, and assert updated text using web-first toHaveText().",
+            acceptanceCriteria: [
+              "Asserts initial text 'DOM Node Generation #1'",
+              "Triggers DOM replacement button",
+              "Asserts new generation text without stale element exceptions"
+            ],
+            expectedBehavior: "Playwright re-evaluates the query in the fresh DOM tree and asserts the updated text seamlessly.",
+            hint: "await expect(page.locator('#dynamic-target')).toHaveText('DOM Node Generation #2');",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 6: Wait for asynchronous content", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  await page.getByLabel("Dismiss Overlay").click();
+
+  const dynamicTarget = page.locator("#dynamic-target");
+  await expect(dynamicTarget).toHaveText("DOM Node Generation #1");
+
+  await page.getByRole("button", { name: "Trigger DOM Replacement" }).click();
+  await expect(dynamicTarget).toHaveText("DOM Node Generation #2");
+});`,
+            troubleshootingNotes: "Playwright locators are evaluated lazily; remounting the component does not break the locator handle.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 6'"
+          },
+          {
+            id: "ex7-diagnose-soft-assertions",
+            title: "Exercise 7: Diagnose Assertions and Use Soft Assertions",
+            objective: "Perform exhaustive UI auditing without prematurely halting test execution on minor failures.",
+            prerequisites: ["Soft assertion concepts", "Locator Gym at /lab/locators"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 7: Soft assertions for non-fatal checks", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Perform multiple UI verifications using expect.soft()
+  // TODO: Check that test.info().errors contains zero unexpected errors
+});`,
+            task: "Audit multiple UI properties on /lab/locators using expect.soft() and assert that no failures occurred.",
+            acceptanceCriteria: [
+              "Uses expect.soft() for 3 or more UI elements",
+              "Verifies heading, input attribute, and button state",
+              "Asserts test.info().errors length is 0"
+            ],
+            expectedBehavior: "All assertions evaluate sequentially, recording results without early termination.",
+            hint: "await expect.soft(locator).toBeVisible();",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 7: Soft assertions for non-fatal checks", async ({ page }) => {
+  await page.goto("/lab/locators");
+  await expect.soft(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect.soft(page.getByRole("heading", { name: "Stable locators" })).toBeVisible();
+  await expect.soft(page.getByLabel("Search courses")).toHaveAttribute("placeholder", "Try Playwright");
+  expect(test.info().errors).toHaveLength(0);
+});`,
+            troubleshootingNotes: "If an expect.soft() check fails, the test continues executing but will fail at completion.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 7'"
+          },
+          {
+            id: "ex8-compare-sleep-retrying",
+            title: "Exercise 8: Compare an Explicit Fixed Sleep with a Retrying Assertion",
+            objective: "Refactor an arbitrary sleep into an instant, deterministic web-first assertion.",
+            prerequisites: ["Anti-pattern identification", "Flaky Lab at /lab/flaky"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 8: Compare sleep with retrying assertion", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  await page.getByLabel("Dismiss Overlay").click();
+  // ANTI-PATTERN: await page.waitForTimeout(2000);
+  // TODO: Replace with retrying web-first assertion
+});`,
+            task: "Eliminate page.waitForTimeout() by replacing it with a retrying assertion that polls until the delayed button is enabled.",
+            acceptanceCriteria: [
+              "Zero occurrences of page.waitForTimeout()",
+              "Uses await expect(button).toBeEnabled({ timeout: 5000 })",
+              "Test completes as soon as element becomes enabled"
+            ],
+            expectedBehavior: "Test resolves in ~1200ms instead of waiting for a rigid sleep, saving execution time and increasing determinism.",
+            hint: "await expect(page.getByRole('button', { name: 'Execute Delayed Action' })).toBeEnabled({ timeout: 5000 });",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 8: Compare sleep with retrying assertion", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  await page.getByLabel("Dismiss Overlay").click();
+  const delayedBtn = page.getByRole("button", { name: "Execute Delayed Action" });
+  await expect(delayedBtn).toBeEnabled({ timeout: 5000 });
+});`,
+            troubleshootingNotes: "Fixed sleeps create sluggish tests locally and flaky tests in CI. Web-first assertions resolve as soon as state changes.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 8'"
+          },
+          {
+            id: "ex9-timeout-custom-message",
+            title: "Exercise 9: Investigate a Timeout with Custom Message and Timeout Parameter",
+            objective: "Configure explicit timeouts and attach contextual diagnostic failure messages.",
+            prerequisites: ["Timeout configuration", "Locator Gym at /lab/locators"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 9: Custom message and explicit timeout", async ({ page }) => {
+  await page.goto("/lab/locators");
+  // TODO: Assert search input visibility with custom error message and explicit 3000ms timeout
+});`,
+            task: "Assert visibility of the course search input using a custom diagnostic message and an explicit timeout override parameter.",
+            acceptanceCriteria: [
+              "Provides descriptive custom failure message string",
+              "Passes { timeout: 3000 } option to assertion",
+              "Asserts search input is visible"
+            ],
+            expectedBehavior: "Playwright evaluates the assertion using the custom 3000ms ceiling and embeds the custom explanation if it fails.",
+            hint: "await expect(locator, 'Custom error message').toBeVisible({ timeout: 3000 });",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 9: Custom message and explicit timeout", async ({ page }) => {
+  await page.goto("/lab/locators");
+  const searchInput = page.getByLabel("Search courses");
+  await expect(
+    searchInput,
+    "Expected course search input to be visible and ready for user typing"
+  ).toBeVisible({ timeout: 3000 });
+});`,
+            troubleshootingNotes: "Custom error messages appear at the top of the failure trace, drastically speeding up CI root-cause analysis.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 9'"
+          },
+          {
+            id: "ex10-senior-flaky-actionability",
+            title: "Exercise 10: Solve a Senior-Level Flaky-Test Scenario with Actionability",
+            objective: "Diagnose and resolve an actionability hit-testing interception defect caused by an overlay.",
+            prerequisites: ["Actionability hit-testing", "Flaky Lab at /lab/flaky"],
+            starterConfig: `import { test, expect } from "@playwright/test";
+
+test("Exercise 10: Solve flaky actionability interception", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  // SCENARIO: A floating modal overlay intercepts pointer events for background elements
+  // TODO: Assert overlay is visible
+  // TODO: Dismiss overlay and assert it is hidden
+  // TODO: Assert background upload controls are enabled
+});`,
+            task: "Identify the blocking interceptor overlay, assert its presence, dismiss it, assert its removal via not.toBeVisible(), and verify background controls are enabled.",
+            acceptanceCriteria: [
+              "Asserts floating overlay is visible",
+              "Dismisses overlay via 'Dismiss Overlay' button",
+              "Asserts overlay is not.toBeVisible()",
+              "Asserts background 'Upload Test Data' input is visible and enabled"
+            ],
+            expectedBehavior: "Background controls become actionable only after the blocking overlay is fully dismissed, preventing flaky pointer-event interception.",
+            hint: "await expect(overlay).not.toBeVisible();",
+            solution: `import { test, expect } from "@playwright/test";
+
+test("Exercise 10: Solve flaky actionability interception", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  const overlay = page.getByTestId("floating-interceptor");
+  await expect(overlay).toBeVisible();
+
+  await page.getByLabel("Dismiss Overlay").click();
+  await expect(overlay).not.toBeVisible();
+
+  const uploadInput = page.getByLabel("Upload Test Data");
+  await expect(uploadInput).toBeVisible();
+  await expect(uploadInput).toBeEnabled();
+});`,
+            troubleshootingNotes: "Actionability 'receives events' check fails if any element covers the center coordinate of your target.",
+            command: "pnpm exec playwright test e2e/practice-assertions.spec.ts -g 'Exercise 10'"
+          }
+        ],
+        knowledgeCheck: [
+          {
+            id: "kc-assert-purpose",
+            topic: "Web-First Assertion Architecture",
+            question: "Why does Playwright recommend using web-first retrying assertions (e.g. await expect(btn).toBeVisible()) over synchronous boolean checks (e.g. expect(await btn.isVisible()).toBe(true))?",
+            options: [
+              "Synchronous boolean checks take up more memory in the Node.js process.",
+              "Web-first assertions automatically retry until the condition succeeds or times out, eliminating race conditions during asynchronous rendering.",
+              "The expect() method only supports locators, not boolean values.",
+              "Browser drivers in Playwright cannot execute JavaScript synchronously."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Web-first assertions poll the target element continuously over the expect timeout (default: 5000ms). A synchronous check evaluates the DOM once at that microsecond; if the component takes 50ms to mount, it fails immediately."
+          },
+          {
+            id: "kc-assert-text-diff",
+            topic: "Text Assertion Semantics",
+            question: "What is the key difference between await expect(locator).toHaveText('Active') and await expect(locator).toContainText('Active')?",
+            options: [
+              "toHaveText() only works on input fields, while toContainText() works on buttons.",
+              "toHaveText() requires an exact full-text match (normalizing whitespace), while toContainText() passes if 'Active' is a substring inside the element.",
+              "toContainText() is deprecated in modern versions of Playwright.",
+              "toHaveText() ignores HTML comments, while toContainText() searches HTML comments."
+            ],
+            correctOptionIndex: 1,
+            explanation: "toHaveText() checks the entire text content against the expected string. toContainText() performs a substring search, making it ideal for elements that contain dynamic timestamps or changing child badges alongside stable text."
+          },
+          {
+            id: "kc-assert-missing-await",
+            topic: "Async Execution Mechanics",
+            question: "What happens if you accidentally omit the 'await' keyword in front of a web-first assertion: expect(locator).toBeVisible();?",
+            options: [
+              "TypeScript compilation fails immediately with a syntax error.",
+              "The assertion executes synchronously in zero milliseconds.",
+              "The assertion returns a pending Promise that is never awaited; the test may pass prematurely while the assertion fails silently in the background.",
+              "Playwright automatically injects await during runtime execution."
+            ],
+            correctOptionIndex: 2,
+            explanation: "Because web-first assertions return a Promise, omitting 'await' causes the test to continue immediately without waiting for the retry loop to resolve. This creates unhandled promise rejections and false-positive test passes."
+          },
+          {
+            id: "kc-assert-actionability-diff",
+            topic: "Actionability vs Assertions",
+            question: "How do Playwright's automatic actionability checks differ from web-first assertions?",
+            options: [
+              "Actionability checks only run in headed mode, while assertions run in headless mode.",
+              "Actionability checks are internal prerequisites run automatically before user actions (verifying attached, visible, stable, receives events, enabled); assertions verify test criteria against expected results.",
+              "Actionability checks can only be called manually by writing page.waitForActionability().",
+              "There is no difference; they are aliases for the same underlying function."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Actionability checks ensure that a user interaction (.click(), .fill()) can realistically happen on a real browser (element is visible, not disabled, and not covered by modals). Assertions verify that your test requirements and state invariants hold true."
+          },
+          {
+            id: "kc-assert-timeout-hierarchy",
+            topic: "Timeout Hierarchy",
+            question: "If playwright.config.ts configures timeout: 30000, expect: { timeout: 5000 }, and use: { actionTimeout: 10000 }, how long will await expect(btn).toBeEnabled() poll before throwing an error?",
+            options: [
+              "30,000ms (governed by the test timeout)",
+              "10,000ms (governed by the action timeout)",
+              "5,000ms (governed by the expect timeout)",
+              "0ms (fails immediately without polling)"
+            ],
+            correctOptionIndex: 2,
+            explanation: "Assertions are governed by the expect timeout (5,000ms). The actionTimeout (10,000ms) only applies to action methods like .click() or .fill(). The test timeout (30,000ms) is the maximum duration for the entire test function."
+          },
+          {
+            id: "kc-assert-soft-usage",
+            topic: "Soft Assertions",
+            question: "In which scenario is using expect.soft() considered an architectural BEST practice?",
+            options: [
+              "During authentication: continuing if the login button is missing.",
+              "During an extensive UI audit: verifying that 10 distinct profile fields, badges, and labels render correctly without failing on the first field.",
+              "When clicking the primary payment checkout button.",
+              "On page.goto() navigation to ignore 404 and 500 server errors."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Soft assertions shine when performing comprehensive inspections across multiple independent UI components. If field #1 has a typo, you still want to know whether fields #2 through #10 are correct. Soft assertions should never be used on critical prerequisites."
+          },
+          {
+            id: "kc-assert-poll-pattern",
+            topic: "Eventual Consistency & expect.poll",
+            question: "Why is expect.poll() preferred over an arbitrary sleep when validating asynchronous backend state changes (e.g. checking if an order status changed in an API)?",
+            options: [
+              "expect.poll() runs inside the browser context, while sleeps run in Node.js.",
+              "expect.poll() polls at configured intervals and resolves as soon as the condition is satisfied, preventing unnecessary delays while providing a bounded timeout.",
+              "expect.poll() bypasses network security firewalls.",
+              "Arbitrary sleeps are forbidden by the TypeScript compiler."
+            ],
+            correctOptionIndex: 1,
+            explanation: "expect.poll() implements an adaptive polling loop. If the order status updates in 200ms, the test proceeds in 200ms. If you used a 5000ms sleep, the test would waste 4800ms unnecessarily, and still fail if the API took 5100ms."
+          },
+          {
+            id: "kc-assert-ci-flakiness-root",
+            topic: "CI Root Cause Analysis",
+            question: "A test with expect(await locator.innerText()).toBe('Ready') passes on a developer's M3 MacBook but intermittently fails in GitHub Actions CI. What is the most likely root cause?",
+            options: [
+              "GitHub Actions does not support Chrome browsers.",
+              "The CI runner has fewer CPU resources, causing the asynchronous UI to take 150ms longer to update text; the non-retrying innerText() snapshot executes before the update completes.",
+              "Playwright disables network traffic in CI environments.",
+              "The developer has a cached browser binary that ignores failed assertions."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Non-retrying assertions like expect(await locator.innerText()) capture state at a single microsecond timestamp. On fast local hardware, the state update happened before the check; on constrained CI workers, it hadn't finished yet. Replacing it with await expect(locator).toHaveText('Ready') solves the problem permanently."
+          },
+          {
+            id: "kc-assert-receives-events",
+            topic: "Actionability Interception",
+            question: "What causes Playwright's actionability engine to log: 'Error: locator.click: Timeout 10000ms exceeded. ... <div class=\"backdrop\"> intercepts pointer events'?",
+            options: [
+              "The button was deleted from the DOM tree.",
+              "A transparent or semi-opaque overlay (e.g. modal backdrop, cookie banner, loading shield) is positioned on top of the button, blocking pointer events from reaching it.",
+              "The user's mouse was unplugged during execution.",
+              "The button does not have a test ID."
+            ],
+            correctOptionIndex: 1,
+            explanation: "Playwright performs point hit-testing (elementFromPoint) at the center of the target element. If an overlay or modal backdrop intercepts the hit-test, Playwright waits for the overlay to disappear. If the overlay never detaches, it times out with an informative interception error."
           }
         ],
         practiceTask: {
-          labRoute: "/lab/locators",
-          labName: "Locator Gym",
-          objective: "Target the 'Open' button inside a dynamic list item filtered by text without using .nth().",
+          labRoute: "/lab/flaky",
+          labName: "Flaky Actionability & Assertions Lab",
+          objective: "Verify Web-First Assertions & Actionability in Flaky Lab",
           instructions: [
-            "Navigate to /lab/locators.",
-            "Locate the list with accessible name 'Courses'.",
-            "Filter listitems by text 'Locators'.",
-            "Click the 'Open' button inside the filtered item.",
-            "Assert that the page status displays 'Opened Locators'."
+            "Interact with /lab/flaky and /lab/forms.",
+            "Dismiss blocking overlays, wait for delayed buttons, handle dynamic DOM replacement, and verify form states.",
+            "Execute all 10 hands-on practice exercises in e2e/practice-assertions.spec.ts."
           ],
           acceptanceCriteria: [
-            "Locator uses .filter({ hasText: 'Locators' }).",
-            "No positional index functions used."
+            "Always prefer web-first retrying assertions over synchronous boolean checks",
+            "Understand the 5 actionability checks: attached, visible, stable, receives events, enabled",
+            "Never use arbitrary fixed sleeps; wait for observable application conditions",
+            "Use expect.soft() for multi-field form audits and expect.poll() for eventual consistency"
           ],
-          hint: "Chain page.getByRole('list', { name: 'Courses' }).getByRole('listitem').filter({ hasText: 'Locators' }).",
+          hint: "Run 'pnpm exec playwright test e2e/practice-assertions.spec.ts' to execute all exercises locally.",
           solutionCode: `import { test, expect } from "@playwright/test";
 
-test("filters dynamic list without positional index", async ({ page }) => {
-  await page.goto("/lab/locators");
-  const row = page.getByRole("list", { name: "Courses" }).getByRole("listitem").filter({ hasText: "Locators" });
-  await row.getByRole("button", { name: "Open" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Opened Locators" })).toBeVisible();
+test("assertions lab validation", async ({ page }) => {
+  await page.goto("/lab/flaky");
+  await page.getByLabel("Dismiss Overlay").click();
+  await expect(page.getByRole("button", { name: "Execute Delayed Action" })).toBeEnabled();
 });`,
-          playwrightCommand: "npx playwright test e2e/locators.spec.ts -g 'filters a nested row'"
+          playwrightCommand: "pnpm exec playwright test e2e/practice-assertions.spec.ts"
         },
         interviewQuestions: [
           {
-            question: "How do you handle a page with two identical 'Save' buttons inside different sections?",
-            answer: "Use container scoping: locate the parent landmark (e.g. page.getByRole('form', { name: 'Billing' }) or page.getByRole('region', { name: 'Shipping' })) and query the 'Save' button inside that container. Alternatively, filter the button's parent group using .filter({ has: page.getByRole('heading', { name: 'Billing' }) }).",
-            architecturalContext: "Maintains strict mode compliance and prevents clicking the wrong section button."
+            question: "Why should senior SDETs prohibit expect(await locator.isVisible()).toBe(true) in production code reviews?",
+            answer: "isVisible() evaluates the DOM state at an instantaneous snapshot in time and returns a boolean. If a React component takes 50 milliseconds to mount or animate, isVisible() immediately returns false, and toBe(true) fails permanently. In contrast, await expect(locator).toBeVisible() is a web-first retrying assertion that polls the DOM continuously over the expect timeout (default: 5000ms), eliminating race conditions caused by network latency or CPU throttling.",
+            architecturalContext: "Enforces deterministic, non-flaky test execution across diverse local and CI hardware environments."
+          },
+          {
+            question: "Explain the difference between Playwright actionability checks and web-first assertions, and why click() and toBeVisible() solve different problems.",
+            answer: "Actionability checks are internal prerequisites that Playwright runs before executing an action (such as .click() or .fill()). It verifies that the element is attached, visible, stable, receives pointer events, and is enabled. Assertions are explicit verifications of system requirements. An element can be 100% visible, but disabled (expect(btn).toBeVisible() passes, but btn.click() waits for enabled state). Conversely, an element can be visible, but obstructed by a transparent modal backdrop (expect(btn).toBeVisible() passes, but btn.click() waits for the overlay to clear).",
+            architecturalContext: "Prevents false-positive tests where clicks were secretly swallowed by inactive controls or floating banners."
+          },
+          {
+            question: "How do you design a robust test strategy for eventually consistent distributed microservices in Playwright?",
+            answer: "In eventually consistent systems (e.g., event-driven architectures where an action publishes a Kafka message and an asynchronous worker updates a database or WebSocket), immediate assertions fail. Senior SDETs use expect.poll() to poll backend status endpoints or database views with exponential backoff intervals, and expect.toPass() for multi-step retry blocks. Furthermore, UI tests should anchor to observable visual states (such as a 'Processing' banner transitioning to 'Completed') rather than assuming immediate completion.",
+            architecturalContext: "Eliminates hard-coded sleeps and allows test suites to run at the maximum possible speed while tolerating asynchronous jitter."
+          },
+          {
+            question: "When should you use expect.soft() and what are the architectural trade-offs?",
+            answer: "expect.soft() records assertion failures without terminating the test function early. It is appropriate for exhaustive UI surface audits (e.g. verifying all fields in a settings page, all columns in a data grid, or visual style regressions) where learning about all 5 defects in a single test run is more valuable than stopping at the first failure. The trade-off is that soft assertions must never be used on critical prerequisites (such as logging in or creating an entity), because subsequent test steps will fail with unhelpful cascading errors.",
+            architecturalContext: "Maximizes test feedback efficiency while preserving test isolation and clear failure diagnosis."
           }
         ]
       }
@@ -1338,294 +3353,42 @@ test("filters dynamic list without positional index", async ({ page }) => {
     description: "Automate complex form controls, ARIA 1.2 comboboxes, multi-step wizards, and client validation error states.",
     iconName: "FileText",
     lessons: [
-      {
-        id: "accessible-form-controls",
-        moduleSlug: "actions-and-forms",
-        moduleTitle: "Input Automation & Accessible Forms",
-        title: "HTML5 Inputs, Validation & Double-Submit Protection",
-        difficulty: "Intermediate",
-        durationMinutes: 20,
-        prerequisites: ["semantic-locators-hierarchy"],
-        summary: "Fill, select, check, and validate complex input types while handling auto-waiting for disabled and loading button states.",
-        sections: [
-          {
-            id: "input-methods",
-            title: "Native Playwright Input Methods",
-            content: "Playwright provides dedicated high-level action methods: `fill()` (clears and types atomically), `selectOption()` (for native select dropdowns), `check()` / `uncheck()` (for checkboxes and radio buttons), and `setInputFiles()` for file inputs. All methods auto-wait for element visibility and actionability."
-          }
-        ],
-        codeExamples: [
-          {
-            id: "form-submission",
-            caption: "Filling and Submitting Form with API Interception",
-            language: "typescript",
-            code: `await page.getByLabel("Full name").fill("Ada Lovelace");
-await page.getByLabel("Email").fill("ada@lab.test");
-await page.getByLabel("Seats").fill("2");
-await page.getByLabel("Track").selectOption("api");
-await page.getByRole("checkbox", { name: "I agree to the lab terms" }).check();
-
-// Await the API response while triggering submission
-const resPromise = page.waitForResponse(r => r.url().includes("/api/lab/forms/intake") && r.ok());
-await page.getByRole("button", { name: "Submit intake" }).click();
-const response = await resPromise;
-expect(response.status()).toBe(200);`,
-            lineExplanations: [
-              { line: 4, explanation: "selectOption works with option value, label, or index." },
-              { line: 5, explanation: "check() verifies current checkbox state and clicks only if unchecked." },
-              { line: 8, explanation: "Setting up response promise before click prevents network race conditions." }
-            ]
-          }
-        ],
-        commonMistakes: [
-          {
-            title: "Calling click() on a checkbox instead of check()",
-            badPractice: `await page.getByRole("checkbox").click();`,
-            goodPractice: `await page.getByRole("checkbox").check();`,
-            explanation: "click() toggles the state blindly; if the checkbox was already checked, click() unchecks it. check() is idempotent and guarantees the desired state."
-          }
-        ],
-        practiceTask: {
-          labRoute: "/lab/forms",
-          labName: "Forms Laboratory",
-          objective: "Submit empty form to trigger validation errors and assert ARIA alerts.",
-          instructions: [
-            "Navigate to /lab/forms.",
-            "Submit the intake form without filling required inputs.",
-            "Assert that ARIA alert elements appear for required fields.",
-            "Verify that no success confirmation is rendered."
-          ],
-          acceptanceCriteria: [
-            "Alert elements are asserted with getByRole('alert').",
-            "Non-existence of success message verified."
-          ],
-          hint: "Use expect(page.getByRole('alert').first()).toBeVisible().",
-          solutionCode: `import { test, expect } from "@playwright/test";
-
-test("asserts validation errors on empty submission", async ({ page }) => {
-  await page.goto("/lab/forms");
-  await page.getByRole("button", { name: "Submit intake" }).click();
-  await expect(page.getByRole("alert").first()).toBeVisible();
-  await expect(page.getByText(/Accepted as/)).toHaveCount(0);
-});`,
-          playwrightCommand: "npx playwright test e2e/forms.spec.ts -g 'shows client errors'"
-        },
-        interviewQuestions: [
-          {
-            question: "Why is locator.fill() preferred over locator.type() in modern Playwright?",
-            answer: "locator.fill() focuses the element, clears existing text, and emits input/change events atomically in a single operation. locator.type() simulates individual keystrokes (pressing each key one by one with delays), which is significantly slower and should only be used when testing keydown/keyup event handlers or debounced autocomplete fields.",
-            architecturalContext: "Reduces test execution time by up to 80% on long forms."
-          }
-        ]
-      }
+      actionsLesson,
+      formsLesson
+    ]
+  },
+  {
+    slug: "browser-contexts-and-navigation",
+    title: "4. Browser Contexts, Multi-Page & Navigation",
+    description: "Master isolated browser contexts, multi-tab coordination, storage state persistence, frame locators, and resilient navigation.",
+    iconName: "Globe",
+    lessons: [
+      browserContextsLesson
     ]
   },
   {
     slug: "network-and-api",
-    title: "4. Network Interception & Route Mocking",
-    description: "Intercept HTTP traffic, simulate 500 outages, test offline aborts, and combine API/UI testing.",
+    title: "5. REST API Testing & Network Automation",
+    description: "Master Playwright's APIRequestContext, test REST endpoints, validate schemas, simulate outages with page.route(), and build hybrid API/UI workflows.",
     iconName: "Sliders",
     lessons: [
-      {
-        id: "route-interception-and-mocking",
-        moduleSlug: "network-and-api",
-        moduleTitle: "Network Interception & Route Mocking",
-        title: "Mocking Network Traffic with page.route()",
-        difficulty: "Intermediate",
-        durationMinutes: 25,
-        prerequisites: ["playwright-introduction"],
-        summary: "Intercept requests at the browser protocol level to fulfill custom JSON responses, simulate outages, and test edge cases deterministically.",
-        sections: [
-          {
-            id: "route-methods",
-            title: "Core Routing Primitives",
-            content: "Playwright intercepts network traffic before it leaves the browser using `page.route(urlPattern, handler)`. Within the handler, you can call `route.fulfill()` to return mock data, `route.continue()` to forward the request with modified headers, or `route.abort('failed')` to simulate connection failure."
-          }
-        ],
-        codeExamples: [
-          {
-            id: "route-mock",
-            caption: "Mocking API Outage and Empty States",
-            language: "typescript",
-            code: `// 1. Intercept telemetry endpoint and mock 500 error
-await page.route("**/api/lab/network/items*", async (route) => {
-  await route.fulfill({
-    status: 500,
-    contentType: "application/json",
-    body: JSON.stringify({ error: "Simulated Database Crash" }),
-  });
-});
-
-await page.getByRole("button", { name: "Fetch Telemetry Records" }).click();
-
-// 2. Assert application displays error banner
-const alert = page.getByRole("alert");
-await expect(alert).toBeVisible();
-await expect(alert).toContainText("500");`,
-            lineExplanations: [
-              { line: 2, explanation: "Glob pattern matches any URL containing the telemetry path." },
-              { line: 3, explanation: "Fulfills the request immediately without calling the live backend." },
-              { line: 12, explanation: "Verifies the front-end gracefully handles server errors." }
-            ]
-          }
-        ],
-        commonMistakes: [
-          {
-            title: "Forgetting to register page.route() before triggering the network call",
-            badPractice: `await page.click('#fetch-btn'); await page.route(...);`,
-            goodPractice: `await page.route(...); await page.click('#fetch-btn');`,
-            explanation: "Routes must be registered before the network request is initiated, otherwise the real request is already in flight."
-          }
-        ],
-        practiceTask: {
-          labRoute: "/lab/network",
-          labName: "Scenario Control Center",
-          objective: "Intercept telemetry requests and inject custom mock data using route.fulfill().",
-          instructions: [
-            "Navigate to /lab/network.",
-            "Register page.route() for **/api/lab/network/items* and fulfill with mock item 'Mocked Telemetry Item'.",
-            "Click 'Fetch Telemetry Records'.",
-            "Assert that the mock item appears in the list."
-          ],
-          acceptanceCriteria: [
-            "Mocked data is displayed in the UI.",
-            "No real backend call is made."
-          ],
-          hint: "Use route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [...] }) }).",
-          solutionCode: `import { test, expect } from "@playwright/test";
-
-test("mocks telemetry items", async ({ page }) => {
-  await page.route("**/api/lab/network/items*", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ items: [{ id: "m1", title: "Mocked Telemetry Item", status: "Healthy", latency: 5 }] }),
-    });
-  });
-  await page.goto("/lab/network");
-  await page.getByRole("button", { name: "Fetch Telemetry Records" }).click();
-  await expect(page.getByText("Mocked Telemetry Item")).toBeVisible();
-});`,
-          playwrightCommand: "npx playwright test e2e/day5-practice.spec.ts -g 'Client-side network mocking'"
-        },
-        interviewQuestions: [
-          {
-            question: "When should tests use page.route() to mock APIs versus testing live endpoints?",
-            answer: "Use live APIs for critical business happy-paths to validate database integrity and API schema contracts. Reserve page.route() for edge cases that are difficult, slow, expensive, or destructive to trigger live (e.g. 503 gateway outages, 429 rate limits, 30-second timeouts, and external payment provider webhooks).",
-            architecturalContext: "Balances end-to-end confidence with deterministic edge-case testing."
-          }
-        ]
-      }
+      apiTestingLesson,
+      networkInterceptionLesson
     ]
   },
   {
     slug: "enterprise-architecture",
-    title: "5. Page Object Models, Fixtures & Custom Matchers",
+    title: "6. Page Object Models, Fixtures & Custom Matchers",
     description: "Scale test suites with decoupled Page Object Models, custom test fixtures, and domain-specific assertions.",
     iconName: "Layers",
     lessons: [
-      {
-        id: "decoupled-page-object-models",
-        moduleSlug: "enterprise-architecture",
-        moduleTitle: "Page Object Models, Fixtures & Custom Matchers",
-        title: "Decoupled TypeScript Page Object Models",
-        difficulty: "Senior SDET",
-        durationMinutes: 30,
-        prerequisites: ["semantic-locators-hierarchy"],
-        summary: "Encapsulate UI structure and operations within clean, decoupled TypeScript classes injected via custom test fixtures.",
-        sections: [
-          {
-            id: "pom-architecture",
-            title: "Modern Playwright POM Design",
-            content: "Avoid the legacy Selenium practice of returning `this` or returning the next page object on every method. In Playwright, POM methods should be explicit async actions that take advantage of auto-waiting locators stored as readonly properties."
-          }
-        ],
-        codeExamples: [
-          {
-            id: "pom-class",
-            caption: "Clean Page Object Model (e2e/pages/CourseCataloguePage.ts)",
-            language: "typescript",
-            code: `import { Locator, Page, expect } from "@playwright/test";
-import { BasePage } from "./BasePage.js";
-
-export class CourseCataloguePage extends BasePage {
-  readonly searchInput: Locator;
-  readonly courseGrid: Locator;
-  readonly createCourseBtn: Locator;
-
-  constructor(page: Page) {
-    super(page);
-    this.searchInput = page.getByLabel("Search courses");
-    this.courseGrid = page.getByTestId("course-grid");
-    this.createCourseBtn = page.getByRole("button", { name: "Create Course" });
-  }
-
-  async open() {
-    await this.goto("/app/courses");
-  }
-
-  async search(query: string) {
-    await this.searchInput.fill(query);
-  }
-
-  async expectCourseVisible(title: string) {
-    await expect(this.courseGrid.getByText(title)).toBeVisible();
-  }
-}`,
-            lineExplanations: [
-              { line: 5, explanation: "Locators are defined as readonly properties in the constructor." },
-              { line: 15, explanation: "Navigation encapsulated cleanly in open()." },
-              { line: 23, explanation: "Assertion method encapsulates grid locators and web-first expect check." }
-            ]
-          }
-        ],
-        commonMistakes: [
-          {
-            title: "Fluent method chaining in async Playwright POMs",
-            badPractice: `await loginPage.enterUser().enterPass().clickSubmit();`,
-            goodPractice: `await loginPage.login(username, password);`,
-            explanation: "Fluent chaining obscures asynchronous Promise resolution boundaries and creates tight coupling between pages."
-          }
-        ],
-        practiceTask: {
-          labRoute: "/app/courses",
-          labName: "Course Catalogue",
-          objective: "Create, search, and verify a course using the CourseCataloguePage POM.",
-          instructions: [
-            "Instantiate CourseCataloguePage using adminPage fixture.",
-            "Navigate to /app/courses using page object open() method.",
-            "Create a new course with unique code.",
-            "Verify course appears in the course grid."
-          ],
-          acceptanceCriteria: [
-            "All actions executed through POM methods.",
-            "No direct page.locator() calls in the spec file."
-          ],
-          hint: "Use const coursesPage = new CourseCataloguePage(adminPage).",
-          solutionCode: `import { test } from "./fixtures/index.js";
-import { CourseCataloguePage } from "./pages/CourseCataloguePage.js";
-
-test("creates and searches course via POM", async ({ adminPage }) => {
-  const pageObj = new CourseCataloguePage(adminPage);
-  await pageObj.open();
-  await pageObj.createCourse({ title: "Custom POM Course", code: "POM-1", price: 199 });
-  await pageObj.expectCourseVisible("Custom POM Course");
-});`,
-          playwrightCommand: "npx playwright test e2e/pom-workflows.spec.ts -g 'manages courses using CourseCataloguePage'"
-        },
-        interviewQuestions: [
-          {
-            question: "Why should Page Object Models encapsulate assertions versus leaving all assertions in the test file?",
-            answer: "High-level domain assertions (like expectUserInDirectory or expectOrderInTable) belong in the POM because they encapsulate complex internal DOM hierarchy and layout details. If the table layout changes from a <table> to CSS grid divs, you only update the POM method, keeping 50 test files unchanged.",
-            architecturalContext: "Minimizes test maintenance overhead and enforces the Single Responsibility Principle."
-          }
-        ]
-      }
+      fixturesLesson,
+      pomArchitectureLesson
     ]
   },
   {
     slug: "quality-audits",
-    title: "6. Accessibility, Visual Testing & Core Web Vitals",
+    title: "7. Accessibility, Visual Testing & Core Web Vitals",
     description: "Automate WCAG 2.1 AA audits with Axe-Core, stabilize visual screenshot regressions, and profile performance with CDP.",
     iconName: "ShieldCheck",
     lessons: [
@@ -1723,12 +3486,89 @@ export function getAllLessons(): Lesson[] {
 }
 
 export function getLessonById(id: string): Lesson | undefined {
+  if (id === "semantic-locators-hierarchy" || id === "strict-mode-and-filtering") {
+    const locatorsLesson = getAllLessons().find((l) => l.id === "playwright-locators");
+    if (locatorsLesson) return locatorsLesson;
+  }
+  if (id === "assertions-and-autowaiting" || id === "playwright-assertions-and-autowaiting") {
+    const assertionsLesson = getAllLessons().find((l) => l.id === "playwright-assertions");
+    if (assertionsLesson) return assertionsLesson;
+  }
+  if (
+    id === "browser-actions-and-interactions" ||
+    id === "playwright-actions-and-interactions" ||
+    id === "playwright-browser-actions"
+  ) {
+    const actionsLessonFound = getAllLessons().find((l) => l.id === "playwright-actions");
+    if (actionsLessonFound) return actionsLessonFound;
+  }
+  if (
+    id === "accessible-form-controls" ||
+    id === "forms-and-validation" ||
+    id === "playwright-forms-and-validation" ||
+    id === "playwright-forms"
+  ) {
+    const formsLessonFound = getAllLessons().find((l) => l.id === "playwright-forms");
+    if (formsLessonFound) return formsLessonFound;
+  }
+  if (
+    id === "browser-contexts-and-navigation" ||
+    id === "browser-contexts-pages-navigation" ||
+    id === "playwright-browser-contexts-pages-navigation" ||
+    id === "browser-contexts" ||
+    id === "playwright-browser-contexts"
+  ) {
+    const contextsLessonFound = getAllLessons().find((l) => l.id === "playwright-browser-contexts");
+    if (contextsLessonFound) return contextsLessonFound;
+  }
+  if (
+    id === "playwright-api-testing" ||
+    id === "api-testing" ||
+    id === "playwright-api" ||
+    id === "rest-api-testing"
+  ) {
+    const apiLessonFound = getAllLessons().find((l) => l.id === "playwright-api-testing");
+    if (apiLessonFound) return apiLessonFound;
+  }
+  if (
+    id === "playwright-network-interception" ||
+    id === "route-interception-and-mocking" ||
+    id === "network-interception-and-mocking" ||
+    id === "playwright-network-mocking" ||
+    id === "network-mocking"
+  ) {
+    const networkLessonFound = getAllLessons().find((l) => l.id === "playwright-network-interception");
+    if (networkLessonFound) return networkLessonFound;
+  }
+  if (
+    id === "playwright-fixtures-and-test-data" ||
+    id === "playwright-fixtures" ||
+    id === "fixtures-and-test-data" ||
+    id === "test-fixtures" ||
+    id === "fixtures-and-hooks"
+  ) {
+    const fixturesLessonFound = getAllLessons().find((l) => l.id === "playwright-fixtures-and-test-data");
+    if (fixturesLessonFound) return fixturesLessonFound;
+  }
+  if (
+    id === "playwright-page-object-models" ||
+    id === "playwright-page-object-model" ||
+    id === "decoupled-page-object-models" ||
+    id === "page-object-model" ||
+    id === "page-object-models" ||
+    id === "pom-architecture"
+  ) {
+    const pomLessonFound = getAllLessons().find((l) => l.id === "playwright-page-object-models");
+    if (pomLessonFound) return pomLessonFound;
+  }
   return getAllLessons().find((l) => l.id === id);
 }
 
 export function getNextAndPrevLesson(currentId: string): { prevLesson?: Lesson; nextLesson?: Lesson } {
+  const resolvedLesson = getLessonById(currentId);
+  const effectiveId = resolvedLesson ? resolvedLesson.id : currentId;
   const all = getAllLessons();
-  const idx = all.findIndex((l) => l.id === currentId);
+  const idx = all.findIndex((l) => l.id === effectiveId);
   if (idx === -1) return {};
   return {
     prevLesson: idx > 0 ? all[idx - 1] : undefined,

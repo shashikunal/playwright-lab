@@ -340,14 +340,22 @@ export function PlaywrightDocs() {
             <ConfigPlaygroundSection playground={currentLesson.playground} />
           )}
 
-          {/* Section: 8 Practical Configuration Exercises (if present) */}
+          {/* Section: Practical Hands-On Exercises (if present) */}
           {currentLesson.exercises && currentLesson.exercises.length > 0 && (
-            <ExercisesSection exercises={currentLesson.exercises} />
+            <ExercisesSection
+              exercises={currentLesson.exercises}
+              title={`${currentLesson.exercises.length} Practical Hands-On Exercises`}
+              description="Hands-on progressive exercises connected directly to our project test suite. Each exercise provides starter code, task criteria, expected outcomes, hints, solutions, and local verification commands."
+            />
           )}
 
           {/* Section: Interactive Knowledge Check Assessment (if present) */}
           {currentLesson.knowledgeCheck && currentLesson.knowledgeCheck.length > 0 && (
-            <KnowledgeCheckSection questions={currentLesson.knowledgeCheck} />
+            <KnowledgeCheckSection
+              questions={currentLesson.knowledgeCheck}
+              title={`Knowledge Check: ${currentLesson.title}`}
+              subtitle="Evaluate your understanding across beginner, intermediate, and advanced concepts with immediate rationale feedback."
+            />
           )}
 
           {/* Section: Hands-on Practice Task */}

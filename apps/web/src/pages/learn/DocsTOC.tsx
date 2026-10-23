@@ -20,9 +20,9 @@ export function DocsTOC({ lesson }: DocsTOCProps) {
     ...lesson.sections.map((sec) => ({ id: sec.id, label: sec.title })),
     ...(lesson.codeExamples.length > 0 ? [{ id: "code-examples", label: "TypeScript Implementation" }] : []),
     ...(lesson.commonMistakes.length > 0 ? [{ id: "common-pitfalls", label: "Pitfalls & Anti-Patterns" }] : []),
-    ...(lesson.playground ? [{ id: "config-playground", label: "Configuration Playground" }] : []),
-    ...(lesson.exercises && lesson.exercises.length > 0 ? [{ id: "hands-on-exercises", label: "8 Configuration Exercises" }] : []),
-    ...(lesson.knowledgeCheck && lesson.knowledgeCheck.length > 0 ? [{ id: "knowledge-check", label: "Knowledge Check Quiz" }] : []),
+    ...(lesson.playground ? [{ id: "config-playground", label: lesson.playground.title.includes("Page Object") || lesson.playground.title.includes("POM") ? "POM & Architecture Matrix" : lesson.playground.title.includes("Fixture") || lesson.playground.title.includes("Hook") ? "Fixtures & Test Data Matrix" : lesson.playground.title.includes("Network") || lesson.playground.title.includes("Interception") || lesson.playground.title.includes("Mocking") ? "Network Mocking Matrix" : lesson.playground.title.includes("API") ? "API Testing Matrix" : lesson.playground.title.includes("Context") || lesson.playground.title.includes("Navigation") ? "Contexts & Navigation Matrix" : lesson.playground.title.includes("Form") || lesson.playground.title.includes("Validation") ? "Forms & Validation Matrix" : lesson.playground.title.includes("Locator") ? "Locator Strategy Matrix" : lesson.playground.title.includes("Assertion") ? "Assertions & Auto-Waiting Matrix" : lesson.playground.title.includes("Action") || lesson.playground.title.includes("Interaction") ? "Interaction & Actionability Matrix" : "Configuration Playground" }] : []),
+    ...(lesson.exercises && lesson.exercises.length > 0 ? [{ id: "hands-on-exercises", label: `${lesson.exercises.length} Hands-On Exercises` }] : []),
+    ...(lesson.knowledgeCheck && lesson.knowledgeCheck.length > 0 ? [{ id: "knowledge-check", label: "Knowledge Check Assessment" }] : []),
     { id: "hands-on-practice", label: "Hands-On Practice Task" },
     ...(lesson.interviewQuestions.length > 0 ? [{ id: "interview-qa", label: "Senior SDET Interview Q&A" }] : []),
   ], [lesson]);
