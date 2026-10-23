@@ -47,31 +47,35 @@ export const initialCourses: Course[] = [
   { id: "crs_06", code: "PW-601", title: "Security Testing with Auth Storage States", category: "Security", difficulty: "advanced", seats: 10, price: 499 },
 ];
 
-export const initialEnrollments: Enrollment[] = [
-  {
-    id: "enr_101",
-    courseId: "crs_01",
-    courseTitle: "Playwright Core Automations",
-    userEmail: "learner@pil.local",
-    seats: 2,
-    totalAmount: 398,
-    status: "Approved",
-    createdAt: "2026-10-20T08:30:00Z",
-  },
-  {
-    id: "enr_102",
-    courseId: "crs_02",
-    courseTitle: "Advanced Locators and Frames",
-    userEmail: "learner@pil.local",
-    seats: 1,
-    totalAmount: 299,
-    status: "Pending",
-    createdAt: "2026-10-21T14:15:00Z",
-  },
-];
+export function createInitialEnrollments(): Enrollment[] {
+  return [
+    {
+      id: "enr_101",
+      courseId: "crs_01",
+      courseTitle: "Playwright Core Automations",
+      userEmail: "learner@pil.local",
+      seats: 2,
+      totalAmount: 398,
+      status: "Approved",
+      createdAt: "2026-10-20T08:30:00Z",
+    },
+    {
+      id: "enr_102",
+      courseId: "crs_02",
+      courseTitle: "Advanced Locators and Frames",
+      userEmail: "learner@pil.local",
+      seats: 1,
+      totalAmount: 299,
+      status: "Pending",
+      createdAt: "2026-10-21T14:15:00Z",
+    },
+  ];
+}
 
-let coursesStore = [...initialCourses];
-let enrollmentsStore = [...initialEnrollments];
+export const initialEnrollments: Enrollment[] = createInitialEnrollments();
+
+let coursesStore = initialCourses.map((c) => ({ ...c }));
+let enrollmentsStore = createInitialEnrollments();
 let nextEnrollmentId = 103;
 
 const namespaces = new Map<string, NamespaceData>();
@@ -105,7 +109,7 @@ export function resetCoursesStore(): void {
 }
 
 export function resetEnrollmentsStore(): void {
-  enrollmentsStore = initialEnrollments.map((e) => ({ ...e }));
+  enrollmentsStore = createInitialEnrollments();
   nextEnrollmentId = 103;
   resetCoursesStore();
 }
@@ -118,7 +122,7 @@ export function resetBusinessStore(): void {
 
 export function resetAppStore(): void {
   resetCoursesStore();
-  enrollmentsStore = initialEnrollments.map((e) => ({ ...e }));
+  enrollmentsStore = createInitialEnrollments();
   nextEnrollmentId = 103;
   managedUsersStore = initialManagedUsers.map((u) => ({ ...u }));
   activitiesStore = initialActivities.map((a) => ({ ...a }));

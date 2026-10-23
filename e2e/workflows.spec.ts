@@ -5,6 +5,7 @@ test.describe("enterprise business workflows", () => {
 
   test.beforeEach(async ({ request }) => {
     await request.post("/api/app/courses/reset");
+    await request.post("/api/app/enrollments/reset");
   });
 
   test("searches and filters courses in the catalogue @smoke", async ({ page }) => {
@@ -135,8 +136,9 @@ test.describe("enterprise business workflows", () => {
 
     // Order table shows new order
     const table = page.getByTestId("enrollments-table");
-    await expect(table.getByText(confId)).toBeVisible();
-    await expect(table.getByText("jordan@enterprise.com")).toBeVisible();
+    const row = table.getByTestId(`enrollment-row-${confId}`);
+    await expect(row).toBeVisible();
+    await expect(row.getByText("jordan@enterprise.com")).toBeVisible();
   });
 
   test("admin can approve pending enrollment", async ({ page }) => {
