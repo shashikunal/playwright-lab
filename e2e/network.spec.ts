@@ -3,14 +3,21 @@ import { expect, test } from "@playwright/test";
 test.describe("scenario controls and network lab", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({ page, request }) => {
+  test.beforeEach(async ({ page, request }, testInfo) => {
+    const ns = testInfo.project.name;
+    await page.setExtraHTTPHeaders({ "x-worker-namespace": ns });
     // Reset controls to clean state before each test
-    await request.post("/api/lab/network/reset");
+    await request.post("/api/lab/network/reset", {
+      headers: { "x-worker-namespace": ns },
+    });
     await page.goto("/lab/network");
   });
 
-  test.afterEach(async ({ request }) => {
-    await request.post("/api/lab/network/reset");
+  test.afterEach(async ({ request }, testInfo) => {
+    const ns = testInfo.project.name;
+    await request.post("/api/lab/network/reset", {
+      headers: { "x-worker-namespace": ns },
+    });
   });
 
   test("fetches telemetry items normally in default configuration @smoke", async ({ page }) => {
@@ -161,7 +168,7 @@ test.describe("scenario controls and network lab", () => {
 
     await page.getByRole("button", { name: "Call Interception Target" }).click();
     const output = page.getByTestId("interception-output");
-    await expect(output).toContainText("Failed to fetch");
+    await expect(output).toHaveText(/Failed to fetch|NetworkError|Load failed/);
   });
 
   test("resets scenario controls back to default state", async ({ page }) => {

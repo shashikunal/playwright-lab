@@ -25,15 +25,24 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getReqNs(req: { headers: Record<string, string | string[] | undefined> }): string {
+  const hdr = req.headers["x-worker-namespace"];
+  if (typeof hdr === "string" && hdr.trim()) {
+    return hdr.trim();
+  }
+  return "shared";
+}
+
 // Controls management
-networkRouter.get("/controls", (_req, res) => {
-  const scenario = getScenarioControls("shared");
+networkRouter.get("/controls", (req, res) => {
+  const scenario = getScenarioControls(getReqNs(req));
   res.json({ scenario });
 });
 
 networkRouter.post("/controls", (req, res) => {
+  const ns = getReqNs(req);
   const { latencyMs, empty, statusOverride, simulateTimeout } = req.body ?? {};
-  const updated = updateScenarioControls("shared", {
+  const updated = updateScenarioControls(ns, {
     ...(typeof latencyMs === "number" ? { latencyMs } : {}),
     ...(typeof empty === "boolean" ? { empty } : {}),
     ...(statusOverride === null || typeof statusOverride === "number" ? { statusOverride } : {}),
@@ -42,8 +51,9 @@ networkRouter.post("/controls", (req, res) => {
   res.json({ scenario: updated });
 });
 
-networkRouter.post("/reset", (_req, res) => {
-  resetNamespace("shared");
+networkRouter.post("/reset", (req, res) => {
+  const ns = getReqNs(req);
+  resetNamespace(ns);
   itemsStore = [...initialItems];
   resetStreamRecords();
   res.json({ status: "ok", scenario: defaultScenario() });
@@ -51,7 +61,7 @@ networkRouter.post("/reset", (_req, res) => {
 
 // Items fetcher with latency, timeout, and status override
 networkRouter.get("/items", async (req, res) => {
-  const scenario = getScenarioControls("shared");
+  const scenario = getScenarioControls(getReqNs(req));
 
   if (scenario.simulateTimeout) {
     res.status(504).json(apiError("gateway_timeout", "Simulated network timeout: gateway failed to respond within 3000ms"));
@@ -114,7 +124,7 @@ networkRouter.get("/items", async (req, res) => {
 
 // Items creation with simulated rollback/failure
 networkRouter.post("/items", async (req, res) => {
-  const scenario = getScenarioControls("shared");
+  const scenario = getScenarioControls(getReqNs(req));
 
   if (scenario.latencyMs > 0) {
     await sleep(scenario.latencyMs);
