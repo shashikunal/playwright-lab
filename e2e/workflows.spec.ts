@@ -4,8 +4,7 @@ test.describe("enterprise business workflows", () => {
   test.describe.configure({ mode: "serial" });
 
   test.beforeEach(async ({ request }) => {
-    // Reset app state before each test
-    await request.post("/api/app/enrollments/reset");
+    await request.post("/api/app/courses/reset");
   });
 
   test("searches and filters courses in the catalogue @smoke", async ({ page }) => {

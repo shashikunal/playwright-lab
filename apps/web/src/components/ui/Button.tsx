@@ -1,13 +1,15 @@
 import type { ButtonHTMLAttributes } from "react";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "ghost";
+  variant?: "primary" | "ghost" | "secondary";
 };
 
 export function Button({ variant = "primary", className = "", type = "button", ...props }: Props) {
   const styles =
     variant === "primary"
       ? "bg-accent text-accent-fg hover:opacity-90"
+      : variant === "secondary"
+      ? "border border-border bg-surface text-text hover:bg-surface-muted"
       : "border border-border bg-surface text-text hover:border-accent hover:text-accent";
   return (
     <button

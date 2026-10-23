@@ -1,4 +1,4 @@
-import { AlertTriangle, BookOpen, Camera, Compass, Crosshair, FileText, GraduationCap, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, UserCheck, Users, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Camera, Compass, Crosshair, FileText, Gauge, GraduationCap, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, UserCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -12,6 +12,7 @@ const labs = [
   { to: "/lab/flaky", label: "Flaky Lab", icon: AlertTriangle },
   { to: "/lab/visual", label: "Visual Lab", icon: Camera },
   { to: "/lab/a11y", label: "Accessibility", icon: ShieldCheck },
+  { to: "/lab/perf", label: "Performance Lab", icon: Gauge },
   { to: "/lab/browser", label: "Browser Lab", icon: Compass },
   { to: "/app/courses", label: "Courses", icon: BookOpen },
   { to: "/app/enrollments", label: "Enrollment", icon: GraduationCap },
@@ -19,7 +20,7 @@ const labs = [
   { to: "/app/profile", label: "Profile", icon: UserCheck },
 ];
 
-const planned = ["Performance Lab"];
+const planned = ["WebAssembly Sandbox"];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);

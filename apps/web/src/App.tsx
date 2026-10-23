@@ -16,6 +16,7 @@ import { Login } from "./pages/Login";
 import { NetworkLab } from "./pages/NetworkLab";
 import { NotFound } from "./pages/NotFound";
 import { Overview } from "./pages/Overview";
+import { PerfLab } from "./pages/PerfLab";
 import { Profile } from "./pages/Profile";
 import { Users } from "./pages/Users";
 import { VisualLab } from "./pages/VisualLab";
@@ -38,6 +39,7 @@ export function App() {
               <Route path="/lab/flaky" element={<FlakyLab />} />
               <Route path="/lab/visual" element={<VisualLab />} />
               <Route path="/lab/a11y" element={<A11yLab />} />
+              <Route path="/lab/perf" element={<PerfLab />} />
               <Route path="/lab/browser" element={<BrowserLab />} />
               <Route path="/lab/browser/popup-content" element={<BrowserPopupContent />} />
               <Route path="/lab/browser/frame-content" element={<BrowserFrameContent />} />

@@ -9,6 +9,10 @@ test.describe("scenario controls and network lab", () => {
     await page.goto("/lab/network");
   });
 
+  test.afterEach(async ({ request }) => {
+    await request.post("/api/lab/network/reset");
+  });
+
   test("fetches telemetry items normally in default configuration @smoke", async ({ page }) => {
     await page.getByRole("button", { name: "Fetch Telemetry Records" }).click();
     const list = page.getByTestId("telemetry-list");
@@ -161,10 +165,15 @@ test.describe("scenario controls and network lab", () => {
   });
 
   test("resets scenario controls back to default state", async ({ page }) => {
-    // Apply latency and 500 error
+    // Apply latency, 500 error, and empty collection
     await page.getByLabel("Slow (2500ms)").click();
+    await expect(page.getByText("Latency: 2500ms")).toBeVisible();
+
     await page.getByLabel("Status code override").selectOption("500");
-    await page.getByLabel("Simulate Empty Response").check();
+    await expect(page.getByText("Status: HTTP 500")).toBeVisible();
+
+    await page.locator("#simulate-empty-checkbox").check();
+    await expect(page.locator("#simulate-empty-checkbox")).toBeChecked();
 
     // Reset
     await page.getByRole("button", { name: "Reset All Controls" }).click();

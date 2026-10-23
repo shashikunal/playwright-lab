@@ -1,8 +1,13 @@
 import { apiError, type CourseListResponse } from "@pil/shared";
 import { Router } from "express";
-import { createCourse, deleteCourse, findUserByToken, getCourseById, getCourseDetail, getCourses, updateCourse } from "../store/memory.js";
+import { createCourse, deleteCourse, findUserByToken, getCourseById, getCourseDetail, getCourses, resetCoursesStore, updateCourse } from "../store/memory.js";
 
 export const coursesRouter = Router();
+
+coursesRouter.post("/reset", (_req, res) => {
+  resetCoursesStore();
+  res.json({ status: "reset" });
+});
 
 function authenticate(req: import("express").Request) {
   const header = req.headers.authorization;

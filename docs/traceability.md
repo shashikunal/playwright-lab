@@ -29,5 +29,6 @@ Status values: planned, implemented, tested, deferred, blocked.
 | Custom Matchers | `/lab/widgets`, `/api/app/activities` | Domain matchers for accessible dialogs, ISO timestamps, and audit actions | positive, semantic assertion | `expect.extend`, custom matchers | `e2e/custom-matchers.spec.ts` | none | tested |
 | Responsive Viewports & Drawer | `/`, `/app/courses` | Mobile hamburger drawer toggle, tablet grid breakpoint, desktop navigation | positive, viewport, touch | `setViewportSize`, `devices` | `e2e/responsive.spec.ts` | none | tested |
 | Pedagogical Learning Modes | `/`, `/lab/forms`, `/app/enrollments` | Guided, Challenge, and Staff Interview modes with interactive self-evaluation | positive, tabs, checklist | UI state, educational UX | `e2e/learning-modes.spec.ts` | none | tested |
-| Performance & Vitals Lab | `/lab/perf` | Core Web Vitals telemetry, CDP metrics, resource timing | — | cdp-session, web-vitals | — | — | planned |
+| Performance & Vitals Lab | `/lab/perf`, `/api/lab/perf/*` | Core Web Vitals telemetry (LCP, CLS, TTFB), CDP session heap metrics, CPU throttling | positive, metrics, layout-shift, CDP | cdp-session, PerformanceObserver, evaluate | `e2e/perf.spec.ts` | none | tested |
+| WebAssembly Sandbox | `/lab/wasm` | Wasm bytecode sandbox, shared memory threads, SIMD vectorization | — | wasm, shared-array-buffer | — | — | planned |
 

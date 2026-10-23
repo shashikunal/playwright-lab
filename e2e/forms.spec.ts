@@ -56,8 +56,8 @@ test.describe("intake form", () => {
     const nav = page.getByRole("navigation", { name: "Primary" });
     await nav.getByRole("link", { name: "Forms" }).click();
     await expect(page).toHaveURL(/\/lab\/forms$/);
-    await expect(nav.getByRole("link", { name: "Performance Lab" })).toHaveCount(0);
-    await expect(nav.getByText("Performance Lab")).toBeVisible();
+    await expect(nav.getByRole("link", { name: "WebAssembly Sandbox" })).toHaveCount(0);
+    await expect(nav.getByText("WebAssembly Sandbox")).toBeVisible();
   });
 
     for (const theme of ["light", "dark"] as const) {

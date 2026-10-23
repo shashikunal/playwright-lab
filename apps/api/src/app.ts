@@ -11,6 +11,7 @@ import { flakyRouter } from "./routes/flaky.js";
 import { formsRouter } from "./routes/forms.js";
 import { healthRouter } from "./routes/health.js";
 import { networkRouter } from "./routes/network.js";
+import { perfRouter } from "./routes/perf.js";
 import { scenariosRouter } from "./routes/scenarios.js";
 import { usersRouter } from "./routes/users.js";
 import { initStore } from "./store/memory.js";
@@ -36,6 +37,7 @@ export function createApp(env: ApiEnv) {
   app.use("/api/lab/network", networkRouter);
   app.use("/api/lab/browser", browserRouter);
   app.use("/api/lab/flaky", flakyRouter);
+  app.use("/api/lab/perf", perfRouter);
   app.use("/api/app/auth", authRouter);
   app.use("/api/app/courses", coursesRouter);
   app.use("/api/app/enrollments", enrollmentsRouter);

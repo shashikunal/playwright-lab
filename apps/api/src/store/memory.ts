@@ -100,29 +100,28 @@ export function resetNamespace(id = "shared"): NamespaceData {
 let nextCourseId = 100;
 
 export function resetCoursesStore(): void {
-  for (const c of initialCourses) {
-    if (!coursesStore.some((existing) => existing.id === c.id)) {
-      coursesStore.push(c);
-    }
-  }
+  coursesStore = initialCourses.map((c) => ({ ...c }));
+  nextCourseId = 100;
 }
 
 export function resetEnrollmentsStore(): void {
-  enrollmentsStore = [...initialEnrollments];
+  enrollmentsStore = initialEnrollments.map((e) => ({ ...e }));
+  nextEnrollmentId = 103;
   resetCoursesStore();
 }
 
 export function resetBusinessStore(): void {
-  managedUsersStore = [...initialManagedUsers];
-  activitiesStore = [...initialActivities];
+  managedUsersStore = initialManagedUsers.map((u) => ({ ...u }));
+  activitiesStore = initialActivities.map((a) => ({ ...a }));
   resetCoursesStore();
 }
 
 export function resetAppStore(): void {
   resetCoursesStore();
-  enrollmentsStore = [...initialEnrollments];
-  managedUsersStore = [...initialManagedUsers];
-  activitiesStore = [...initialActivities];
+  enrollmentsStore = initialEnrollments.map((e) => ({ ...e }));
+  nextEnrollmentId = 103;
+  managedUsersStore = initialManagedUsers.map((u) => ({ ...u }));
+  activitiesStore = initialActivities.map((a) => ({ ...a }));
   resetNamespace("shared");
 }
 
@@ -247,6 +246,7 @@ export function resetFlakyState(): void {
   flakyState = { unstableMode: false, failureCount: 0 };
   uploadsStore = [];
   nextUploadId = 1;
+  resetBoundedRetry(2);
 }
 
 export function addUpload(filename: string, sizeBytes: number, mimeType: string): FileUploadResult {

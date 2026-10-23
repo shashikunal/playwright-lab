@@ -547,7 +547,62 @@ export const scenarioSeed: ScenarioSummary[] = [
     topic: "reliability",
     difficulty: "advanced",
     route: "/lab/perf",
+    status: "available",
+    concepts: ["web-vitals", "cdp-session", "trace", "metrics"],
+    learning: {
+      guided: {
+        conceptOverview: "Measure Core Web Vitals (LCP, CLS, INP/FID, TTFB) using W3C PerformanceObserver and Chrome DevTools Protocol (CDP) sessions.",
+        architectureDetails: [
+          "Navigation timing via performance.getEntriesByType('navigation') gives sub-millisecond TTFB and DOM load metrics.",
+          "PerformanceObserver dynamically monitors layout-shift (CLS) and largest-contentful-paint (LCP) events.",
+          "page.context().newCDPSession(page) communicates directly with Chromium V8 via CDP commands (Performance.getMetrics, Emulation.setCPUThrottlingRate)."
+        ],
+        recommendedLocators: [
+          "page.getByTestId('metric-lcp')",
+          "page.getByTestId('metric-cls')",
+          "page.getByRole('button', { name: 'Inject Layout Shift' })"
+        ],
+        suggestedAssertions: [
+          "expect(vitals.lcp).toBeLessThan(2500);",
+          "expect(vitals.cls).toBeLessThan(0.1);"
+        ],
+        codeSnippet: `test('audits Web Vitals and CDP metrics', async ({ page }) => {
+  const client = await page.context().newCDPSession(page);
+  await client.send('Performance.enable');
+  await page.goto('/lab/perf');
+  const { metrics } = await client.send('Performance.getMetrics');
+  const heap = metrics.find((m) => m.name === 'JSHeapUsedSize');
+  expect(heap?.value).toBeGreaterThan(0);
+});`
+      },
+      challenge: {
+        objective: "Measure baseline CLS, trigger the dynamic layout shift experiment, assert that CLS score elevates, then capture CDP heap memory usage.",
+        constraints: [
+          "Assert LCP renders below 2500ms threshold",
+          "Detect CLS change via W3C observer",
+          "Verify CDP session metrics without test flakiness"
+        ],
+        acceptanceChecklist: [
+          "LCP healthy metric verified",
+          "CLS layout shift detected",
+          "CDP heap metrics captured"
+        ],
+        targetRuntimeMs: 2000
+      },
+      interview: {
+        question: "What are the limitations of testing Core Web Vitals in a headless synthetic CI environment compared to Real User Monitoring (RUM)?",
+        tradeOffAnalysis: "Synthetic tests run on unthrottled, pristine cloud instances with mock users, giving consistent regression baselines but masking real-world mobile device latencies, memory pressure, and 3G/4G network jitter. Modern suites pair synthetic thresholds with RUM field data.",
+        trapToAvoid: "Relying on full-page visual tests or arbitrary sleeps to evaluate performance instead of reading deterministic W3C PerformanceObserver events."
+      }
+    }
+  },
+  {
+    id: "wasm",
+    title: "WebAssembly Sandbox",
+    topic: "reliability",
+    difficulty: "advanced",
+    route: "/lab/wasm",
     status: "planned",
-    concepts: ["web-vitals", "cdp-session", "trace"],
+    concepts: ["wasm", "shared-memory", "threads"],
   },
 ];
