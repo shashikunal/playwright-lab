@@ -109,7 +109,7 @@ test.describe("Day 5: Scenario Controls & Network Interception Mastery", () => {
 
   test("Exercise 5: Restoring live backend calls via page.unroute()", async ({ page }) => {
     // Handler that mocks response
-    const mockHandler = async (route: any) => {
+    const mockHandler = async (route: Parameters<Parameters<typeof page.route>[1]>[0]) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
