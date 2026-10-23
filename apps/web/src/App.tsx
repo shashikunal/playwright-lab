@@ -17,6 +17,9 @@ import { NetworkLab } from "./pages/NetworkLab";
 import { NotFound } from "./pages/NotFound";
 import { Overview } from "./pages/Overview";
 import { PerfLab } from "./pages/PerfLab";
+import { PracticeDashboard } from "./pages/PracticeDashboard";
+import { PracticeForgotPassword } from "./pages/PracticeForgotPassword";
+import { PracticeLogin } from "./pages/PracticeLogin";
 import { Profile } from "./pages/Profile";
 import { Users } from "./pages/Users";
 import { VisualLab } from "./pages/VisualLab";
@@ -32,6 +35,9 @@ export function App() {
             <Routes>
               <Route path="/" element={<Overview />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/practice/login" element={<PracticeLogin />} />
+              <Route path="/practice/dashboard" element={<PracticeDashboard />} />
+              <Route path="/practice/forgot-password" element={<PracticeForgotPassword />} />
               <Route path="/lab/locators" element={<Locators />} />
               <Route path="/lab/forms" element={<Forms />} />
               <Route path="/lab/widgets" element={<Widgets />} />

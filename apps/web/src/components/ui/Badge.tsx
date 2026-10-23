@@ -3,9 +3,13 @@ import type { ReactNode } from "react";
 export function Badge({
   children,
   tone = "neutral",
+  className = "",
+  "data-testid": dataTestId,
 }: {
   children: ReactNode;
   tone?: "neutral" | "warning" | "accent" | "success" | "danger";
+  className?: string;
+  "data-testid"?: string;
 }) {
   const styles =
     tone === "warning"
@@ -18,7 +22,10 @@ export function Badge({
       ? "border-red-500/30 bg-red-500/10 text-red-500"
       : "border-border bg-surface text-muted";
   return (
-    <span className={`inline-flex rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${styles}`}>
+    <span
+      data-testid={dataTestId}
+      className={`inline-flex rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${styles} ${className}`}
+    >
       {children}
     </span>
   );

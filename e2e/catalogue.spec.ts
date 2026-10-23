@@ -15,6 +15,7 @@ test.describe("scenario catalogue", () => {
     await expect(catalogue.getByRole("link", { name: "Visual Regression Lab" })).toHaveAttribute("href", "/lab/visual");
     await expect(catalogue.getByRole("link", { name: "Accessibility Audit Lab" })).toHaveAttribute("href", "/lab/a11y");
     await expect(catalogue.getByRole("link", { name: "Performance & Vitals Lab" })).toHaveAttribute("href", "/lab/perf");
+    await expect(catalogue.getByRole("link", { name: "Practice Login & Session Management" })).toHaveAttribute("href", "/practice/login");
     await expect(catalogue.getByRole("link", { name: "WebAssembly Sandbox" })).toHaveCount(0);
     await expect(catalogue.getByRole("heading", { name: "WebAssembly Sandbox" })).toBeVisible();
     await expect(catalogue.getByText("Not available yet").first()).toBeVisible();

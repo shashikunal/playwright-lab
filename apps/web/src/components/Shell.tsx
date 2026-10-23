@@ -1,10 +1,11 @@
-import { AlertTriangle, BookOpen, Camera, Compass, Crosshair, FileText, Gauge, GraduationCap, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, UserCheck, Users, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Camera, Compass, Crosshair, FileText, Gauge, GraduationCap, KeyRound, Layers, LayoutDashboard, LogOut, Menu, ScanSearch, ShieldCheck, Sliders, User, UserCheck, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 
 const labs = [
+  { to: "/practice/login", label: "Practice Login", icon: KeyRound },
   { to: "/lab/locators", label: "Locator Gym", icon: ScanSearch },
   { to: "/lab/forms", label: "Forms", icon: FileText },
   { to: "/lab/widgets", label: "Widgets", icon: Layers },

@@ -122,6 +122,7 @@ export function resetAppStore(): void {
   nextEnrollmentId = 103;
   managedUsersStore = initialManagedUsers.map((u) => ({ ...u }));
   activitiesStore = initialActivities.map((a) => ({ ...a }));
+  resetPracticeAuthStore();
   resetNamespace("shared");
 }
 
@@ -557,6 +558,109 @@ export function getCourseDetail(id: string): CourseDetail | undefined {
     syllabus,
     remainingSeats: Math.max(2, course.seats - 4),
   };
+}
+
+// ==========================================
+// Phase 14: Dedicated Practice Login Module
+// ==========================================
+export interface PracticeUser {
+  id: string;
+  username: string;
+  email: string;
+  password: string;
+  displayName: string;
+  role: "student" | "practitioner" | "locked";
+  isLocked?: boolean;
+  simulatedResetToken?: string;
+}
+
+export const initialPracticeUsers: PracticeUser[] = [
+  {
+    id: "prac_01",
+    username: "student",
+    email: "student@practice.local",
+    password: "Password123!",
+    displayName: "Alex Student",
+    role: "student",
+  },
+  {
+    id: "prac_02",
+    username: "practitioner",
+    email: "practitioner@practice.local",
+    password: "SecurePractice2026!",
+    displayName: "Morgan Practitioner",
+    role: "practitioner",
+  },
+  {
+    id: "prac_03",
+    username: "locked_user",
+    email: "locked@practice.local",
+    password: "Locked123!",
+    displayName: "Jordan Locked",
+    role: "locked",
+    isLocked: true,
+  },
+];
+
+let practiceUsersStore: PracticeUser[] = initialPracticeUsers.map((u) => ({ ...u }));
+const practiceSessions = new Map<string, { userId: string; username: string; expiresAt: number }>();
+let sessionTokenCounter = 1000;
+
+export function findPracticeUserByUsername(username: string): PracticeUser | undefined {
+  return practiceUsersStore.find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
+}
+
+export function findPracticeUserByEmail(email: string): PracticeUser | undefined {
+  return practiceUsersStore.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+}
+
+export function findPracticeUserByResetToken(token: string): PracticeUser | undefined {
+  return practiceUsersStore.find((u) => u.simulatedResetToken === token.trim());
+}
+
+export function createPracticeSession(user: PracticeUser): { token: string; expiresAt: number } {
+  sessionTokenCounter += 1;
+  const token = `tok_practice_${user.username}_${sessionTokenCounter}_${Date.now()}`;
+  const expiresAt = Date.now() + 3600 * 1000; // 1 hour
+  practiceSessions.set(token, { userId: user.id, username: user.username, expiresAt });
+  return { token, expiresAt };
+}
+
+export function verifyPracticeSession(token: string): PracticeUser | undefined {
+  const session = practiceSessions.get(token);
+  if (!session) return undefined;
+  if (Date.now() > session.expiresAt) {
+    practiceSessions.delete(token);
+    return undefined;
+  }
+  return practiceUsersStore.find((u) => u.id === session.userId);
+}
+
+export function invalidatePracticeSession(token: string): boolean {
+  return practiceSessions.delete(token);
+}
+
+export function setPracticeUserPassword(userId: string, newPass: string): boolean {
+  const user = practiceUsersStore.find((u) => u.id === userId);
+  if (!user) return false;
+  user.password = newPass;
+  user.simulatedResetToken = undefined;
+  return true;
+}
+
+export function setPracticeUserResetToken(usernameOrEmail: string, token: string): PracticeUser | undefined {
+  const user =
+    findPracticeUserByUsername(usernameOrEmail) ||
+    findPracticeUserByEmail(usernameOrEmail);
+  if (!user) return undefined;
+  user.simulatedResetToken = token;
+  return user;
+}
+
+export function resetPracticeAuthStore(): void {
+  practiceUsersStore = initialPracticeUsers.map((u) => ({ ...u }));
+  practiceSessions.clear();
+  sessionTokenCounter = 1000;
 }
 
 

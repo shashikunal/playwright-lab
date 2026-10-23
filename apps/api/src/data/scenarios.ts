@@ -597,6 +597,66 @@ export const scenarioSeed: ScenarioSummary[] = [
     }
   },
   {
+    id: "practice-login",
+    title: "Practice Login & Session Management",
+    topic: "business",
+    difficulty: "beginner",
+    route: "/practice/login",
+    status: "available",
+    concepts: ["forms", "password-toggle", "validation", "session-tokens", "protected-routes", "forgot-password"],
+    learning: {
+      guided: {
+        conceptOverview: "Master core login mechanics: stable test IDs, accessible labels, input validation, password toggle, server session verification, and simulated password reset flows.",
+        architectureDetails: [
+          "page.getByRole('button', { name: ... }) and page.getByLabel(...) provide resilient semantic targeting.",
+          "Show/hide password toggles dynamically swap input type between 'password' and 'text'.",
+          "Protected dashboards inspect server-side session validity and block direct unauthenticated navigation."
+        ],
+        recommendedLocators: [
+          "page.getByLabel('Practice Username')",
+          "page.getByLabel('Practice Password')",
+          "page.getByTestId('password-toggle-btn')",
+          "page.getByTestId('submit-btn')"
+        ],
+        suggestedAssertions: [
+          "await expect(page.getByTestId('password-input')).toHaveAttribute('type', 'text');",
+          "await expect(page.getByTestId('welcome-message')).toContainText('student');",
+          "await expect(page).toHaveURL(/\\/practice\\/dashboard/);"
+        ],
+        codeSnippet: `test('practice login and password toggle', async ({ page }) => {
+  await page.goto('/practice/login');
+  await page.getByLabel('Practice Username').fill('student');
+  await page.getByLabel('Practice Password').fill('Password123!');
+  await page.getByTestId('password-toggle-btn').click();
+  await expect(page.getByTestId('password-input')).toHaveAttribute('type', 'text');
+  await page.getByTestId('submit-btn').click();
+  await expect(page).toHaveURL('/practice/dashboard');
+  await expect(page.getByTestId('welcome-message')).toBeVisible();
+});`
+      },
+      challenge: {
+        objective: "Submit empty credentials, verify accessible error alerts, toggle password visibility, authenticate as 'student', verify protected dashboard, logout, and verify unauthenticated direct navigation is blocked.",
+        constraints: [
+          "Do not use hardcoded page.waitForTimeout",
+          "Assert server session token is cleared upon logout",
+          "Verify unauthenticated direct access redirects to /practice/login"
+        ],
+        acceptanceChecklist: [
+          "Empty field validation error asserted",
+          "Password visibility toggled and verified",
+          "Successful login redirects to dashboard",
+          "Logout invalidates session and redirects"
+        ],
+        targetRuntimeMs: 2500
+      },
+      interview: {
+        question: "How do you test authentication flows without making the entire end-to-end test suite slow from repeated UI logins on every test?",
+        tradeOffAnalysis: "UI login tests are essential to validate the login form mechanics, validation errors, and password toggles. However, the rest of the test suite should bypass UI login by pre-populating browser storageState (cookies/tokens) or using an API login fixture, keeping execution speed fast while preserving authentic session boundaries.",
+        trapToAvoid: "Writing tests where test B depends on test A leaving the browser logged in, which causes parallel test failures and cascading flakes."
+      }
+    }
+  },
+  {
     id: "wasm",
     title: "WebAssembly Sandbox",
     topic: "reliability",
