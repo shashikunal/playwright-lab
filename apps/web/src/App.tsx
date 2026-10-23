@@ -26,6 +26,7 @@ import { VisualLab } from "./pages/VisualLab";
 import { WasmLab } from "./pages/WasmLab";
 import { Widgets } from "./pages/Widgets";
 import { ThemeProvider } from "./theme/ThemeProvider";
+import { PlaywrightDocs } from "./pages/learn/PlaywrightDocs";
 
 export function App() {
   return (
@@ -57,6 +58,8 @@ export function App() {
               <Route path="/app/enrollments" element={<Enrollments />} />
               <Route path="/app/users" element={<Users />} />
               <Route path="/app/profile" element={<Profile />} />
+              <Route path="/learn/playwright" element={<PlaywrightDocs />} />
+              <Route path="/learn/playwright/:lessonId" element={<PlaywrightDocs />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Shell>

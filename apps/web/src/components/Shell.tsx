@@ -73,6 +73,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <LayoutDashboard aria-hidden="true" size={16} />
             Overview
           </NavLink>
+          <NavLink
+            to="/learn/playwright"
+            onClick={() => setOpen(false)}
+            data-testid="nav-playwright-docs"
+            className={({ isActive }) =>
+              `mt-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${
+                isActive ? "bg-surface-muted text-accent" : "text-text hover:bg-surface-muted"
+              }`
+            }
+          >
+            <BookOpen aria-hidden="true" size={16} />
+            Playwright Docs
+          </NavLink>
           <p className="mb-2 mt-6 px-3 font-mono text-[11px] uppercase tracking-wider text-muted">
             Practice labs
           </p>

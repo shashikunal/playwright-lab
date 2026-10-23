@@ -98,6 +98,34 @@ export function Overview() {
         The catalogue comes from Express. Only available scenarios are links. Planned labs stay on the page so you can see what is not built yet.
       </p>
 
+      {/* Playwright Learning Path Hero Banner */}
+      <section
+        aria-labelledby="learn-hero-heading"
+        className="mt-6 rounded-lg border border-accent/30 bg-gradient-to-r from-accent/10 via-surface to-surface p-5 sm:p-6"
+        data-testid="playwright-docs-hero-banner"
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/20 px-2.5 py-0.5 font-mono text-xs font-semibold text-accent">
+              <GraduationCap size={14} /> New: Full Curriculum
+            </span>
+            <h2 id="learn-hero-heading" className="text-lg font-bold tracking-tight text-text sm:text-xl">
+              Playwright Documentation & Senior Learning Path
+            </h2>
+            <p className="text-sm text-muted max-w-xl">
+              15+ in-depth documentation modules, line-by-line TypeScript breakdowns, common anti-patterns, real terminal test commands, and L5/L6 SDET interview preparation.
+            </p>
+          </div>
+          <Link
+            to="/learn/playwright"
+            data-testid="explore-docs-hero-btn"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg shadow-sm hover:opacity-90"
+          >
+            Start Learning
+          </Link>
+        </div>
+      </section>
+
       {/* API Health */}
       <section aria-labelledby="health-heading" className="mt-8 rounded-lg border border-border bg-surface">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">

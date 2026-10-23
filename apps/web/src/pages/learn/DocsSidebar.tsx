@@ -144,6 +144,7 @@ export function DocsSidebar({
                           <li key={lesson.id}>
                             <NavLink
                               to={`/learn/playwright/${lesson.id}`}
+                              data-testid={`sidebar-lesson-${lesson.id}`}
                               className={({ isActive: navActive }) =>
                                 `flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-xs transition-colors ${
                                   navActive || isActive

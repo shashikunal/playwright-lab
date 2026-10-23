@@ -106,6 +106,7 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
         <button
           type="button"
           onClick={() => setShowHint((h) => !h)}
+          data-testid="toggle-hint-btn"
           className="flex items-center gap-1.5 text-xs font-medium text-muted hover:text-accent transition-colors cursor-pointer"
         >
           <Lightbulb size={14} className="text-warning" />
@@ -113,7 +114,10 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
           {showHint ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         {showHint && (
-          <div className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-text leading-relaxed">
+          <div
+            data-testid="hint-content"
+            className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-text leading-relaxed"
+          >
             {task.hint}
           </div>
         )}
@@ -124,6 +128,7 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
         <button
           type="button"
           onClick={() => setShowSolution((s) => !s)}
+          data-testid="toggle-solution-btn"
           className="flex items-center gap-1.5 text-xs font-medium text-muted hover:text-accent transition-colors cursor-pointer"
         >
           <HelpCircle size={14} className="text-muted" />
@@ -131,7 +136,10 @@ export function PracticeTaskCard({ task }: PracticeTaskCardProps) {
           {showSolution ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         {showSolution && (
-          <div className="mt-2 rounded-md border border-border bg-black/50 p-4 font-mono text-xs text-stone-200 overflow-x-auto">
+          <div
+            data-testid="solution-content"
+            className="mt-2 rounded-md border border-border bg-black/50 p-4 font-mono text-xs text-stone-200 overflow-x-auto"
+          >
             <pre>{task.solutionCode}</pre>
           </div>
         )}
