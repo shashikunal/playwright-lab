@@ -74,8 +74,9 @@ export class EnrollmentWizardPage extends BasePage {
   }
 
   async expectOrderInTable(orderId: string, email: string) {
-    await expect(this.enrollmentsTable.getByText(orderId)).toBeVisible();
-    await expect(this.enrollmentsTable.getByText(email)).toBeVisible();
+    const row = this.page.getByTestId(`enrollment-row-${orderId}`);
+    await expect(row).toBeVisible();
+    await expect(row.getByText(email)).toBeVisible();
   }
 
   async approveOrder(orderId: string) {

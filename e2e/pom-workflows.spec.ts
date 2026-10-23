@@ -33,14 +33,15 @@ test.describe("enterprise Page Object Model workflows", () => {
     const wizard = new EnrollmentWizardPage(page);
     await wizard.open();
 
+    const uniqueEmail = `taylor_${Date.now()}_${Math.floor(Math.random() * 1000)}@pom.local`;
     const orderId = await wizard.completeFullWizard({
       seats: 3,
       name: "Taylor POM User",
-      email: "taylor@pom.local",
+      email: uniqueEmail,
     });
     expect(orderId).toMatch(/^enr_\d+$/);
 
-    await wizard.expectOrderInTable(orderId, "taylor@pom.local");
+    await wizard.expectOrderInTable(orderId, uniqueEmail);
   });
 
   test("manages user directory using UserManagementPage POM", async ({ adminPage }) => {
