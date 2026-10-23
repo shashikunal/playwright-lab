@@ -184,7 +184,7 @@ test.describe("flaky lab, anti-patterns, and file operations", () => {
 
     // Web-first assertion auto-waits for randomized async completion without manual sleep
     const tokenCard = page.getByTestId("auth-token-card");
-    await expect(tokenCard).toBeVisible();
+    await expect(tokenCard).toBeVisible({ timeout: 10000 });
     await expect(tokenCard).toContainText("Token: tok_auth_");
   });
 
