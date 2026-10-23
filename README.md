@@ -159,6 +159,30 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 - **Deep-Linked Course Syllabus (`/app/courses/:id`)**: Detailed curriculum view featuring collapsible syllabus module accordions, instructor profile credentials, prerequisites checkmarks, and "Enroll Now" CTA.
 - **Account Settings & Audit Log (`/app/profile`)**: Notification preferences checkboxes (Email updates, SMS alerts, weekly digest) with feedback alerts, and chronological activity audit history.
 
+### 13. Performance & Core Web Vitals Lab (`/lab/perf`)
+- **CDP Telemetry Integration**: Access Chrome DevTools Protocol (`page.context().newCDPSession(page)`) to capture low-level heap memory usage, JS event counts, and `Performance.getMetrics`.
+- **Core Web Vitals Telemetry**: Live extraction of `PerformanceNavigationTiming` metrics (TTFB, DOMContentLoaded, Load Duration) and Web Vitals (LCP, FID, CLS).
+- **Controlled Synthetic Stress**: Trigger client-side CPU spin-loops and DOM-thrashing loops to simulate resource saturation under high test concurrency.
+- **Automated Performance Assertions**: Real-time diagnostic threshold badges asserting memory leaks, timing violations, and UI frame drops.
+
+### 14. Practice Login Lab (`/practice/login`)
+- **Standalone Authentication Showcase**: Dedicated portal modeling enterprise login workflows independent of main app session state.
+- **Field & Password Controls**: Real-time client/server validation and show/hide password toggle.
+- **Cookie-Based Session Management**: Authenticated dashboard (`/practice/dashboard`) protected by `pil-session` cookie, user profile inspection, and session timeout simulation.
+- **Self-Service Password Recovery**: Complete flow with `/practice/forgot-password` and `/practice/reset-password` token validation.
+- **Session Invalidation**: Clean logout handling with cookie clearing and unauthenticated redirection.
+
+### 15. WebAssembly Sandbox (`/lab/wasm`)
+- **Direct Bytecode Execution**: Compiles and instantiates an embedded 81-byte `wasm32` binary module exporting `fib(n)`, `trap()`, and `WebAssembly.Memory`.
+- **Linear Memory Inspection**: Visualizes low-level WebAssembly memory pages (64KB chunks), supports byte read/write, and dynamic buffer growth.
+- **Comparative Benchmarking**: In-browser side-by-side performance benchmarking comparing recursive JavaScript execution vs native WebAssembly.
+- **Runtime Trap Handling**: Intentional unreachable opcode execution asserting `WebAssembly.RuntimeError` capture and recovery.
+
+### 16. OpenAPI 3.1 Explorer (`/api/docs`) & Learner Mastery Tracker (`/`)
+- **Interactive Documentation Explorer**: Zero-dependency Swagger-style API explorer serving complete OpenAPI 3.1.0 specifications (`/api/docs/openapi.json`).
+- **Live "Try It Out" Testing**: Execute live requests against all backend routes directly in browser or with Playwright `request.get()`.
+- **Persistent Learner Mastery Tracker**: Comprehensive curriculum progress bar and scenario checklist persisted in `localStorage` (`pil-progress`) with atomic completion toggles and one-click reset.
+
 ---
 
 ## Design System & Theme Engine
@@ -170,10 +194,9 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
 ---
 
----
-
 ## Documentation & Playbooks
 
+- **[Interactive OpenAPI 3.1.0 Explorer](http://127.0.0.1:3001/api/docs)**: Live API documentation and interactive test runner.
 - **[Writing Industrial Playwright Tests (10-Year SDET Guide)](docs/staff-sdet-playwright-guide.md)**: Staff SDET mindset, the 5 immutable laws, architectural patterns, and anti-pattern code review checklists.
 - **[Windows Setup & Operations Runbook](docs/windows-setup-runbook.md)**: Local Windows installation, port allocation, and troubleshooting without Docker.
 - **[10-Day Industrial Curriculum Guide](docs/curriculum-exercises.md)**: Structured learning challenge mapping routes, exercises, and Senior/Staff SDET interview trade-offs.
@@ -186,15 +209,16 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 
 The repository features comprehensive end-to-end testing running in parallel across **Chromium**, **Firefox**, **WebKit**, and **Mobile Chrome**:
 
-- **Total Test Cases**: **136 tests** across 23 distinct test suites (**412 cross-browser executions**).
-- **Smoke Suite**: 55 critical smoke tests (`@smoke`) passing across Desktop Chromium, Desktop Firefox, Desktop WebKit, and Mobile Chrome (`Pixel 7`).
-- **Parallel Regression**: 136/136 tests passing in under 2.5 minutes with zero cross-worker crosstalk.
+- **Total Test Cases**: **174 distinct tests** across 27 spec files (**529 cross-browser executions**).
+- **Smoke Suite**: **67 critical smoke tests** (`@smoke`) passing across Desktop Chromium, Desktop Firefox, Desktop WebKit, and Mobile Chrome (`Pixel 7`).
+- **Parallel Regression**: 100% tests passing in under 3 minutes with zero cross-worker crosstalk.
 - **Accessibility Suite**: Full WCAG 2.1 AA automated auditing with `@axe-core/playwright`.
 - **Visual Snapshot Suite**: Golden baseline screenshots generated and validated with dynamic timestamp masking and frozen CSS animations.
 
 ```text
-Active Test Suites (23 Spec Files):
+Active Test Suites (27 Spec Files):
   ✓ e2e/a11y.spec.ts
+  ✓ e2e/api-docs.spec.ts
   ✓ e2e/auth.setup.ts
   ✓ e2e/auth.spec.ts
   ✓ e2e/browser.spec.ts
@@ -208,13 +232,16 @@ Active Test Suites (23 Spec Files):
   ✓ e2e/locators.spec.ts
   ✓ e2e/multi-context.spec.ts
   ✓ e2e/network.spec.ts
+  ✓ e2e/perf.spec.ts
   ✓ e2e/pom-workflows.spec.ts
+  ✓ e2e/practice-login.spec.ts
   ✓ e2e/responsive.spec.ts
   ✓ e2e/smoke.spec.ts
   ✓ e2e/storage-state.spec.ts
   ✓ e2e/theme.spec.ts
   ✓ e2e/users.spec.ts
   ✓ e2e/visual.spec.ts
+  ✓ e2e/wasm.spec.ts
   ✓ e2e/widgets.spec.ts
   ✓ e2e/workflows.spec.ts
 ```
