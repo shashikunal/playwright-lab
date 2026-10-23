@@ -16,9 +16,8 @@ test.describe("scenario catalogue", () => {
     await expect(catalogue.getByRole("link", { name: "Accessibility Audit Lab" })).toHaveAttribute("href", "/lab/a11y");
     await expect(catalogue.getByRole("link", { name: "Performance & Vitals Lab" })).toHaveAttribute("href", "/lab/perf");
     await expect(catalogue.getByRole("link", { name: "Practice Login & Session Management" })).toHaveAttribute("href", "/practice/login");
-    await expect(catalogue.getByRole("link", { name: "WebAssembly Sandbox" })).toHaveCount(0);
-    await expect(catalogue.getByRole("heading", { name: "WebAssembly Sandbox" })).toBeVisible();
-    await expect(catalogue.getByText("Not available yet").first()).toBeVisible();
+    await expect(catalogue.getByRole("link", { name: "WebAssembly Sandbox" })).toHaveAttribute("href", "/lab/wasm");
+    await expect(catalogue.getByText("Not available yet")).toHaveCount(0);
   });
 
   test("filters through the API", async ({ page }) => {
@@ -51,9 +50,12 @@ test.describe("scenario catalogue", () => {
     const response = await request.get("/api/scenarios?difficulty=beginner");
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
-    expect(body.scenarios).toHaveLength(1);
-    expect(body.scenarios[0].id).toBe("locators");
-    expect(body.scenarios[0].status).toBe("available");
+    expect(body.scenarios.length).toBeGreaterThanOrEqual(1);
+    for (const scenario of body.scenarios) {
+      expect(scenario.difficulty).toBe("beginner");
+      expect(scenario.status).toBe("available");
+    }
+    expect(body.scenarios.some((s: { id: string }) => s.id === "locators")).toBeTruthy();
   });
 
   for (const theme of ["light", "dark"] as const) {

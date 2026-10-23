@@ -31,5 +31,5 @@ Status values: planned, implemented, tested, deferred, blocked.
 | Pedagogical Learning Modes | `/`, `/lab/forms`, `/app/enrollments` | Guided, Challenge, and Staff Interview modes with interactive self-evaluation | positive, tabs, checklist | UI state, educational UX | `e2e/learning-modes.spec.ts` | none | tested |
 | Performance & Vitals Lab | `/lab/perf`, `/api/lab/perf/*` | Core Web Vitals telemetry (LCP, CLS, TTFB), CDP session heap metrics, CPU throttling | positive, metrics, layout-shift, CDP | cdp-session, PerformanceObserver, evaluate | `e2e/perf.spec.ts` | none | tested |
 | Practice Login Lab | `/practice/login`, `/api/practice/auth/*` | Practice portal, password toggle, client & server validation, protected dashboard, forgot password | positive, negative, validation, show/hide, reset, sessions | getByRole, getByLabel, getByTestId, isolated contexts | `e2e/practice-login.spec.ts` | `POST /api/practice/auth/reset` | tested |
-| WebAssembly Sandbox | `/lab/wasm` | Wasm bytecode sandbox, shared memory threads, SIMD vectorization | — | wasm, shared-array-buffer | — | — | planned |
+| WebAssembly Sandbox | `/lab/wasm` | Wasm bytecode sandbox, shared memory inspection, JS benchmark, trap handling | positive, memory growth, benchmark, trap | wasm, evaluate, traps | `e2e/wasm.spec.ts` | none | tested |
 

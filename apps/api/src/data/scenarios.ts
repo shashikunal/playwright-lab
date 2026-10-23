@@ -662,7 +662,57 @@ export const scenarioSeed: ScenarioSummary[] = [
     topic: "reliability",
     difficulty: "advanced",
     route: "/lab/wasm",
-    status: "planned",
-    concepts: ["wasm", "shared-memory", "threads"],
+    status: "available",
+    concepts: ["wasm", "shared-memory", "bytecode", "traps", "benchmarking"],
+    learning: {
+      guided: {
+        conceptOverview: "Automate testing of WebAssembly (Wasm) modules: bytecode compilation, calling exported functions, buffer memory inspection, benchmarking against native JS, and trapping runtime errors.",
+        architectureDetails: [
+          "WebAssembly.instantiate() compiles binary bytecode into callable exports.",
+          "Wasm memory is exposed as an ArrayBuffer, inspectable via Uint8Array views.",
+          "Wasm traps (e.g. unreachable instruction) throw WebAssembly.RuntimeError in JavaScript.",
+          "Playwright can evaluate Wasm instance states directly or assert UI outputs."
+        ],
+        recommendedLocators: [
+          "page.getByTestId('wasm-run-btn')",
+          "page.getByTestId('wasm-result')",
+          "page.getByTestId('wasm-trap-btn')",
+          "page.getByTestId('wasm-error-alert')"
+        ],
+        suggestedAssertions: [
+          "await expect(page.getByTestId('wasm-result')).toHaveText('6,765');",
+          "await expect(page.getByTestId('wasm-error-alert')).toContainText('unreachable');"
+        ],
+        codeSnippet: `test('verifies wasm computation and trap handling', async ({ page }) => {
+  await page.goto('/lab/wasm');
+  await page.getByTestId('wasm-n-input').fill('20');
+  await page.getByTestId('wasm-run-btn').click();
+  await expect(page.getByTestId('wasm-result')).toHaveText('6,765');
+
+  await page.getByTestId('wasm-trap-btn').click();
+  await expect(page.getByRole('alert')).toContainText('unreachable');
+});`
+      },
+      challenge: {
+        objective: "Execute a recursive Fibonacci computation in WebAssembly with n=25, assert execution speed is recorded in microseconds/milliseconds, verify memory buffer growth by +1 page, and handle deliberate runtime trap.",
+        constraints: [
+          "Assert Wasm computation completes with exact mathematical value 75,025",
+          "Verify memory buffer expands from 64KB (1 page) to 128KB (2 pages)",
+          "Catch WebAssembly.RuntimeError without crashing the browser runner"
+        ],
+        acceptanceChecklist: [
+          "Wasm calculation asserted via toHaveText",
+          "Comparative benchmark confirms JS and Wasm produce identical values",
+          "Memory page growth verified",
+          "Runtime error captured and rendered in accessible alert"
+        ],
+        targetRuntimeMs: 1500
+      },
+      interview: {
+        question: "How do you architect automated end-to-end tests for WebAssembly-heavy web applications (e.g., in-browser video editors, crypto wallets, 3D graphics) without creating flaky tests?",
+        tradeOffAnalysis: "1) UI/DOM assertions for state changes driven by Wasm events. 2) In-browser evaluation (page.evaluate()) to inspect Wasm instance memory buffers directly. 3) Avoid asserting brittle microsecond timings which vary wildly between local laptops and CI runners; assert mathematical correctness, status codes, and non-zero performance metrics instead.",
+        trapToAvoid: "Writing hardcoded timing assertions like expect(runtime).toBeLessThan(10) which intermittently fail in headless CI runners under load."
+      }
+    }
   },
 ];

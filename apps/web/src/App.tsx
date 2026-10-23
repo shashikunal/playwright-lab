@@ -23,6 +23,7 @@ import { PracticeLogin } from "./pages/PracticeLogin";
 import { Profile } from "./pages/Profile";
 import { Users } from "./pages/Users";
 import { VisualLab } from "./pages/VisualLab";
+import { WasmLab } from "./pages/WasmLab";
 import { Widgets } from "./pages/Widgets";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
@@ -46,6 +47,7 @@ export function App() {
               <Route path="/lab/visual" element={<VisualLab />} />
               <Route path="/lab/a11y" element={<A11yLab />} />
               <Route path="/lab/perf" element={<PerfLab />} />
+              <Route path="/lab/wasm" element={<WasmLab />} />
               <Route path="/lab/browser" element={<BrowserLab />} />
               <Route path="/lab/browser/popup-content" element={<BrowserPopupContent />} />
               <Route path="/lab/browser/frame-content" element={<BrowserFrameContent />} />
