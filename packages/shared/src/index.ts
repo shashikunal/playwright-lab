@@ -46,6 +46,33 @@ export type ScenarioTopic = (typeof scenarioTopics)[number];
 export type ScenarioDifficulty = (typeof scenarioDifficulties)[number];
 export type ScenarioStatus = "available" | "planned";
 
+export type LearningGuide = {
+  conceptOverview: string;
+  architectureDetails: string[];
+  recommendedLocators: string[];
+  suggestedAssertions: string[];
+  codeSnippet: string;
+};
+
+export type LearningChallenge = {
+  objective: string;
+  constraints: string[];
+  acceptanceChecklist: string[];
+  targetRuntimeMs?: number;
+};
+
+export type LearningInterview = {
+  question: string;
+  tradeOffAnalysis: string;
+  trapToAvoid: string;
+};
+
+export type LearningMetadata = {
+  guided: LearningGuide;
+  challenge: LearningChallenge;
+  interview: LearningInterview;
+};
+
 export type ScenarioSummary = {
   id: string;
   title: string;
@@ -54,6 +81,7 @@ export type ScenarioSummary = {
   route: string;
   status: ScenarioStatus;
   concepts: string[];
+  learning?: LearningMetadata;
 };
 
 export type ScenarioListResponse = {

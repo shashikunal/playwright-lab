@@ -1,6 +1,6 @@
 import { apiError, type EnrollmentListResponse, type EnrollmentStatus } from "@pil/shared";
 import { Router } from "express";
-import { createEnrollment, findUserByToken, getCourseById, getEnrollments, resetAppStore, updateEnrollmentStatus } from "../store/memory.js";
+import { createEnrollment, findUserByToken, getCourseById, getEnrollments, logActivity, resetAppStore, updateEnrollmentStatus } from "../store/memory.js";
 
 export const enrollmentsRouter = Router();
 
@@ -50,6 +50,8 @@ enrollmentsRouter.post("/", (req, res) => {
     totalAmount: course.price * seatCount,
   });
 
+  logActivity("enrollment_submitted", `${enrollment.id} (${course.title})`, email);
+
   res.status(201).json({ enrollment });
 });
 
@@ -71,6 +73,8 @@ enrollmentsRouter.patch("/:id/status", (req, res) => {
     res.status(404).json(apiError("not_found", "Enrollment record not found"));
     return;
   }
+
+  logActivity("enrollment_status_changed", `${updated.id} (${status})`, user.email);
 
   res.json({ enrollment: updated });
 });

@@ -55,8 +55,13 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173) in your browser.
 | `npm run build` | Compiles `@pil/shared`, `@pil/api`, and `@pil/web` production bundles |
 | `npm run typecheck` | Runs strict TypeScript verification across all workspaces |
 | `npm run lint` | Runs ESLint 9 flat-config across the monorepo |
-| `npm run test:e2e` | Executes the complete Playwright test suite (71 tests) |
-| `npx playwright test --grep @smoke` | Runs only critical smoke tests |
+| `npm run test:e2e` | Executes the complete cross-browser matrix and device test suites |
+| `npm run test:e2e:smoke` | Runs high-priority smoke tests (`@smoke`) in under 45s |
+| `npm run test:e2e:chrome` | Runs test suites exclusively on Chromium |
+| `npm run test:e2e:firefox` | Runs test suites on Mozilla Firefox |
+| `npm run test:e2e:webkit` | Runs test suites on Apple WebKit (Safari engine) |
+| `npm run test:e2e:mobile` | Runs mobile viewport responsive tests (Pixel 7 emulation) |
+| `npm run test:e2e:ui` | Launches Playwright's interactive visual UI runner |
 | `npx playwright show-report` | Opens the interactive HTML test execution report |
 
 ---

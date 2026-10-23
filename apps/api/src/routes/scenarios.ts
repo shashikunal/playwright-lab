@@ -35,6 +35,15 @@ scenariosRouter.get("/scenarios", (req, res) => {
   res.json({ scenarios });
 });
 
+scenariosRouter.get("/scenarios/:id", (req, res) => {
+  const scenario = scenarioSeed.find((s) => s.id === req.params.id);
+  if (!scenario) {
+    res.status(404).json(apiError("not_found", "Scenario not found"));
+    return;
+  }
+  res.json({ scenario });
+});
+
 function single(value: unknown): string | undefined | Error {
   if (value === undefined) return undefined;
   if (Array.isArray(value)) return new Error("repeated");

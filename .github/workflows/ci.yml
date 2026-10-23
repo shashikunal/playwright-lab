@@ -2,13 +2,14 @@ name: Playwright Industrial Lab CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   test:
-    timeout-minutes: 15
+    name: Industrial Test Matrix & Cross-Browser Execution
+    timeout-minutes: 20
     runs-on: ubuntu-latest
 
     steps:
@@ -21,30 +22,47 @@ jobs:
           node-version: 20
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install dependencies reproducibly
         run: npm ci
 
-      - name: TypeScript type-check
+      - name: Cache Playwright browser binaries
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: TypeScript monorepo type-check
         run: npm run typecheck
 
       - name: Lint codebase
         run: npm run lint
 
-      - name: Build applications
+      - name: Build applications and packages
         run: npm run build
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers and OS dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Run Playwright tests
+      - name: Run Playwright test suites (Matrix & Devices)
         run: npm run test:e2e
         env:
           CI: true
 
-      - name: Upload Playwright report
+      - name: Upload Playwright HTML Report
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-html-report
           path: playwright-report/
+          retention-days: 14
+
+      - name: Upload Test Results & Failure Traces
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: playwright-failure-diagnostics
+          path: test-results/
           retention-days: 14

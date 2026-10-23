@@ -200,10 +200,14 @@ function ScenarioCard({ scenario }: { scenario: ScenarioSummary }) {
         <h3 className="text-sm font-semibold">{scenario.title}</h3>
         <Badge tone={scenario.status === "planned" ? "warning" : "neutral"}>{scenario.status}</Badge>
       </div>
-      <p className="mt-2 font-mono text-xs text-muted">
-        {scenario.difficulty} · {scenario.topic}
-      </p>
       <p className="mt-2 text-sm text-muted">{scenario.concepts.join(", ")}</p>
+      {scenario.learning ? (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/50 text-[11px] font-mono text-muted">
+          <span className="rounded bg-accent/10 px-1.5 py-0.5 text-accent font-semibold">Guided</span>
+          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-text">Challenge</span>
+          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-text">Interview Q</span>
+        </div>
+      ) : null}
     </>
   );
 
@@ -211,6 +215,7 @@ function ScenarioCard({ scenario }: { scenario: ScenarioSummary }) {
     return (
       <Link
         to={scenario.route}
+        aria-label={scenario.title}
         className="block rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent"
       >
         {body}

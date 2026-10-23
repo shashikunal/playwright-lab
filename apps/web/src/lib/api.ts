@@ -1,4 +1,4 @@
-import type { HealthResponse, ScenarioListResponse } from "@pil/shared";
+import type { HealthResponse, ScenarioListResponse, ScenarioSummary } from "@pil/shared";
 
 export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
   const response = await fetch("/api/health", { signal });
@@ -20,4 +20,11 @@ export async function fetchScenarios(
   const response = await fetch(`/api/scenarios${suffix}`, { signal });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json() as Promise<ScenarioListResponse>;
+}
+
+export async function fetchScenarioById(id: string, signal?: AbortSignal): Promise<ScenarioSummary> {
+  const response = await fetch(`/api/scenarios/${encodeURIComponent(id)}`, { signal });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  return data.scenario as ScenarioSummary;
 }

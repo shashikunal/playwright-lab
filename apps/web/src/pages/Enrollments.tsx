@@ -4,10 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
+import { ScenarioLearningPanel } from "../components/ScenarioLearningPanel";
 import { useAuth } from "../context/AuthContext";
+import { useScenarioLearning } from "../lib/useScenarioLearning";
 
 export function Enrollments() {
   const { user, role } = useAuth();
+  const { learning } = useScenarioLearning("enrollment");
   const [searchParams] = useSearchParams();
   const preselectedCourseId = searchParams.get("courseId");
 
@@ -378,6 +381,10 @@ export function Enrollments() {
           </table>
         </div>
       </section>
+
+      {learning ? (
+        <ScenarioLearningPanel learning={learning} scenarioTitle="Multi-Step Enrollment Wizard" />
+      ) : null}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { Check, ChevronRight, Layers, Loader2 } from "lucide-react";
 import { Banner } from "../components/ui/Banner";
 import { Button } from "../components/ui/Button";
 import { Field, controlClass } from "../components/ui/Field";
+import { ScenarioLearningPanel } from "../components/ScenarioLearningPanel";
+import { useScenarioLearning } from "../lib/useScenarioLearning";
 
 type ClientErrors = Partial<Record<keyof FormState | "form", string>>;
 
@@ -26,6 +28,7 @@ const emptyForm: FormState = {
 };
 
 export function Forms() {
+  const { learning } = useScenarioLearning("forms");
   const [activeTab, setActiveTab] = useState<"intake" | "inputs" | "labels" | "combos" | "wizard">("intake");
 
   // --- TAB 1: INTAKE FORM STATE (preserves existing e2e test compatibility) ---
@@ -846,6 +849,10 @@ export function Forms() {
           </section>
         </div>
       )}
+
+      {learning ? (
+        <ScenarioLearningPanel learning={learning} scenarioTitle="Forms Laboratory" />
+      ) : null}
     </div>
   );
 }
