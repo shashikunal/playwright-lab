@@ -49,10 +49,18 @@ function requireTrainerOrAdmin(req: AuthenticatedRequest, res: Response, next: N
   next();
 }
 
+function getReqNs(req: { headers: Record<string, string | string[] | undefined> }): string {
+  const hdr = req.headers["x-worker-namespace"];
+  if (typeof hdr === "string" && hdr.trim()) {
+    return hdr.trim();
+  }
+  return "shared";
+}
+
 // GET /api/app/users - List with search, filter, pagination, sorting
 usersRouter.get("/", authenticate, requireTrainerOrAdmin, (req, res) => {
   const { q, role, status, page, limit, sort, order } = req.query;
-  const result = getManagedUsers({
+  const result = getManagedUsers(getReqNs(req), {
     q: typeof q === "string" ? q : undefined,
     role: typeof role === "string" ? role : undefined,
     status: typeof status === "string" ? status : undefined,
@@ -81,7 +89,7 @@ usersRouter.post("/", authenticate, requireAdmin, (req, res) => {
     return;
   }
 
-  const newUser = createManagedUser({
+  const newUser = createManagedUser(getReqNs(req), {
     name: name.trim(),
     email: email.trim().toLowerCase(),
     role,
@@ -104,13 +112,13 @@ usersRouter.post("/bulk", authenticate, requireAdmin, (req, res) => {
     return;
   }
 
-  const updatedCount = bulkUpdateUsers(userIds, action);
+  const updatedCount = bulkUpdateUsers(getReqNs(req), userIds, action);
   res.json({ updatedCount, status: "ok" });
 });
 
 // GET /api/app/users/:id - Individual user detail
 usersRouter.get("/:id", authenticate, requireTrainerOrAdmin, (req, res) => {
-  const user = getManagedUserById(req.params.id);
+  const user = getManagedUserById(getReqNs(req), req.params.id);
   if (!user) {
     res.status(404).json(apiError("not_found", "User not found"));
     return;
@@ -121,7 +129,7 @@ usersRouter.get("/:id", authenticate, requireTrainerOrAdmin, (req, res) => {
 // PATCH /api/app/users/:id - Update user (Admin only)
 usersRouter.patch("/:id", authenticate, requireAdmin, (req, res) => {
   const { name, role, status, department } = req.body;
-  const updated = updateManagedUser(req.params.id, {
+  const updated = updateManagedUser(getReqNs(req), req.params.id, {
     ...(name && { name: String(name).trim() }),
     ...(role && { role }),
     ...(status && { status }),
@@ -137,7 +145,7 @@ usersRouter.patch("/:id", authenticate, requireAdmin, (req, res) => {
 
 // DELETE /api/app/users/:id - Delete user (Admin only)
 usersRouter.delete("/:id", authenticate, requireAdmin, (req, res) => {
-  const success = deleteManagedUser(req.params.id);
+  const success = deleteManagedUser(getReqNs(req), req.params.id);
   if (!success) {
     res.status(404).json(apiError("not_found", "User not found"));
     return;

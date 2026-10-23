@@ -62,8 +62,16 @@ activityRouter.patch("/profile", authenticate, (req, res) => {
   res.json({ preferences: getUserPreferences() });
 });
 
+function getReqNs(req: { headers: Record<string, string | string[] | undefined> }): string {
+  const hdr = req.headers["x-worker-namespace"];
+  if (typeof hdr === "string" && hdr.trim()) {
+    return hdr.trim();
+  }
+  return "shared";
+}
+
 // POST /api/app/business/reset - Deterministic state reset
-activityRouter.post("/business/reset", (_req, res) => {
-  resetBusinessStore();
+activityRouter.post("/business/reset", (req, res) => {
+  resetBusinessStore(getReqNs(req));
   res.json({ status: "reset", message: "Business application data reset to initial seed" });
 });

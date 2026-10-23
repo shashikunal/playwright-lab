@@ -3,9 +3,13 @@ import { expect, test } from "@playwright/test";
 test.describe("enterprise user management and business features", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({ request }) => {
+  test.beforeEach(async ({ page, request }, testInfo) => {
+    const ns = testInfo.project.name;
+    await page.setExtraHTTPHeaders({ "x-worker-namespace": ns });
     // Reset business application store to initial seed before each test
-    await request.post("/api/app/business/reset");
+    await request.post("/api/app/business/reset", {
+      headers: { "x-worker-namespace": ns },
+    });
   });
 
   test("enforces role permissions: learner is forbidden from accessing user directory @smoke", async ({

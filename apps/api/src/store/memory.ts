@@ -114,8 +114,8 @@ export function resetEnrollmentsStore(): void {
   resetCoursesStore();
 }
 
-export function resetBusinessStore(): void {
-  managedUsersStore = initialManagedUsers.map((u) => ({ ...u }));
+export function resetBusinessStore(ns = "shared"): void {
+  managedUsersStoreByNs.set(ns, initialManagedUsers.map((u) => ({ ...u })));
   activitiesStore = initialActivities.map((a) => ({ ...a }));
   resetCoursesStore();
 }
@@ -124,7 +124,7 @@ export function resetAppStore(): void {
   resetCoursesStore();
   enrollmentsStore = createInitialEnrollments();
   nextEnrollmentId = 103;
-  managedUsersStore = initialManagedUsers.map((u) => ({ ...u }));
+  managedUsersStoreByNs.clear();
   activitiesStore = initialActivities.map((a) => ({ ...a }));
   resetPracticeAuthStore();
   resetNamespace("shared");
@@ -370,22 +370,50 @@ export const initialManagedUsers: ManagedUser[] = [
   },
 ];
 
-let managedUsersStore: ManagedUser[] = [...initialManagedUsers];
+const managedUsersStoreByNs = new Map<string, ManagedUser[]>();
 let nextManagedUserId = 106;
 
-export function getManagedUsers(options?: {
-  q?: string;
-  role?: string;
-  status?: string;
-  page?: number;
-  limit?: number;
-  sort?: string;
-  order?: string;
-}): { users: ManagedUser[]; total: number; page: number; totalPages: number } {
-  let list = [...managedUsersStore];
+function getManagedUsersList(ns = "shared"): ManagedUser[] {
+  let list = managedUsersStoreByNs.get(ns);
+  if (!list) {
+    list = initialManagedUsers.map((u) => ({ ...u }));
+    managedUsersStoreByNs.set(ns, list);
+  }
+  return list;
+}
 
-  if (options?.q) {
-    const q = options.q.toLowerCase().trim();
+function setManagedUsersList(ns: string, list: ManagedUser[]): void {
+  managedUsersStoreByNs.set(ns, list);
+}
+
+export function getManagedUsers(
+  nsOrOptions?:
+    | string
+    | {
+        q?: string;
+        role?: string;
+        status?: string;
+        page?: number;
+        limit?: number;
+        sort?: string;
+        order?: string;
+      },
+  options?: {
+    q?: string;
+    role?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+    sort?: string;
+    order?: string;
+  },
+): { users: ManagedUser[]; total: number; page: number; totalPages: number } {
+  const ns = typeof nsOrOptions === "string" ? nsOrOptions : "shared";
+  const opts = typeof nsOrOptions === "object" ? nsOrOptions : options;
+  let list = [...getManagedUsersList(ns)];
+
+  if (opts?.q) {
+    const q = opts.q.toLowerCase().trim();
     list = list.filter(
       (u) =>
         u.name.toLowerCase().includes(q) ||
@@ -394,17 +422,17 @@ export function getManagedUsers(options?: {
     );
   }
 
-  if (options?.role && options.role !== "all") {
-    list = list.filter((u) => u.role.toLowerCase() === options.role?.toLowerCase());
+  if (opts?.role && opts.role !== "all") {
+    list = list.filter((u) => u.role.toLowerCase() === opts.role?.toLowerCase());
   }
 
-  if (options?.status && options.status !== "all") {
-    list = list.filter((u) => u.status.toLowerCase() === options.status?.toLowerCase());
+  if (opts?.status && opts.status !== "all") {
+    list = list.filter((u) => u.status.toLowerCase() === opts.status?.toLowerCase());
   }
 
   // Sorting
-  const sortKey = (options?.sort as keyof ManagedUser) || "name";
-  const asc = options?.order !== "desc";
+  const sortKey = (opts?.sort as keyof ManagedUser) || "name";
+  const asc = opts?.order !== "desc";
   list.sort((a, b) => {
     const valA = String(a[sortKey] ?? "").toLowerCase();
     const valB = String(b[sortKey] ?? "").toLowerCase();
@@ -412,8 +440,8 @@ export function getManagedUsers(options?: {
   });
 
   const total = list.length;
-  const page = Math.max(1, options?.page || 1);
-  const limit = Math.max(1, options?.limit || 10);
+  const page = Math.max(1, opts?.page || 1);
+  const limit = Math.max(1, opts?.limit || 10);
   const totalPages = Math.ceil(total / limit) || 1;
   const start = (page - 1) * limit;
   const paginated = list.slice(start, start + limit);
@@ -421,39 +449,66 @@ export function getManagedUsers(options?: {
   return { users: paginated, total, page, totalPages };
 }
 
-export function getManagedUserById(id: string): ManagedUser | undefined {
-  return managedUsersStore.find((u) => u.id === id);
+export function getManagedUserById(idOrNs: string, id?: string): ManagedUser | undefined {
+  const ns = id !== undefined ? idOrNs : "shared";
+  const targetId = id !== undefined ? id : idOrNs;
+  return getManagedUsersList(ns).find((u) => u.id === targetId);
 }
 
-export function createManagedUser(input: Omit<ManagedUser, "id" | "createdAt" | "enrolledCoursesCount">): ManagedUser {
+export function createManagedUser(
+  nsOrInput: string | Omit<ManagedUser, "id" | "createdAt" | "enrolledCoursesCount">,
+  input?: Omit<ManagedUser, "id" | "createdAt" | "enrolledCoursesCount">,
+): ManagedUser {
+  const ns = typeof nsOrInput === "string" ? nsOrInput : "shared";
+  const data = (typeof nsOrInput === "object" ? nsOrInput : input)!;
+  const store = getManagedUsersList(ns);
   const newUser: ManagedUser = {
     id: `usr_${nextManagedUserId++}`,
-    ...input,
+    ...data,
     enrolledCoursesCount: 0,
     createdAt: new Date().toISOString(),
   };
-  managedUsersStore.unshift(newUser);
+  store.unshift(newUser);
   logActivity("user_registered", newUser.email, "admin@pil.local");
   return newUser;
 }
 
-export function updateManagedUser(id: string, partial: Partial<ManagedUser>): ManagedUser | undefined {
-  const idx = managedUsersStore.findIndex((u) => u.id === id);
+export function updateManagedUser(
+  nsOrId: string,
+  idOrPartial: string | Partial<ManagedUser>,
+  partial?: Partial<ManagedUser>,
+): ManagedUser | undefined {
+  const ns = typeof idOrPartial === "string" ? nsOrId : "shared";
+  const targetId = typeof idOrPartial === "string" ? idOrPartial : nsOrId;
+  const patch = (typeof idOrPartial === "object" ? idOrPartial : partial)!;
+  const store = getManagedUsersList(ns);
+  const idx = store.findIndex((u) => u.id === targetId);
   if (idx === -1) return undefined;
-  managedUsersStore[idx] = { ...managedUsersStore[idx], ...partial };
-  return managedUsersStore[idx];
+  store[idx] = { ...store[idx], ...patch };
+  return store[idx];
 }
 
-export function deleteManagedUser(id: string): boolean {
-  const initial = managedUsersStore.length;
-  managedUsersStore = managedUsersStore.filter((u) => u.id !== id);
-  return managedUsersStore.length < initial;
+export function deleteManagedUser(nsOrId: string, id?: string): boolean {
+  const ns = id !== undefined ? nsOrId : "shared";
+  const targetId = id !== undefined ? id : nsOrId;
+  const store = getManagedUsersList(ns);
+  const initial = store.length;
+  const filtered = store.filter((u) => u.id !== targetId);
+  setManagedUsersList(ns, filtered);
+  return filtered.length < initial;
 }
 
-export function bulkUpdateUsers(userIds: string[], action: "activate" | "deactivate"): number {
-  const targetStatus: UserStatus = action === "activate" ? "Active" : "Inactive";
+export function bulkUpdateUsers(
+  nsOrUserIds: string | string[],
+  userIdsOrAction: string[] | ("activate" | "deactivate"),
+  action?: "activate" | "deactivate",
+): number {
+  const ns = typeof nsOrUserIds === "string" ? nsOrUserIds : "shared";
+  const userIds = Array.isArray(nsOrUserIds) ? nsOrUserIds : (userIdsOrAction as string[]);
+  const act = typeof userIdsOrAction === "string" ? userIdsOrAction : action!;
+  const targetStatus: UserStatus = act === "activate" ? "Active" : "Inactive";
   let count = 0;
-  for (const user of managedUsersStore) {
+  for (const user of getManagedUsersList(ns)) {
     if (userIds.includes(user.id)) {
       user.status = targetStatus;
       count++;
