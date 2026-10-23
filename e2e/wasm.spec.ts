@@ -85,7 +85,7 @@ test.describe("WebAssembly Sandbox and Low-Level Bytecode Lab", () => {
     const alert = page.getByTestId("wasm-error-alert");
     await expect(alert).toBeVisible();
     await expect(alert).toHaveAttribute("role", "alert");
-    await expect(alert).toContainText("unreachable");
+    await expect(alert).toContainText(/unreachable/i);
 
     // Dismiss alert
     await page.getByTestId("clear-trap-btn").click();
